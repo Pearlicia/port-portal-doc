@@ -72,7 +72,7 @@ jobs:
           baseUrl: https://api.getport.io
           operation: UPSERT
           identifier: video  # Unique identifier for the video in Port
-          title: YouTube Video Metadata
+          title: YouTube Video
           blueprint: video
           properties: |-
             {
