@@ -1,0 +1,87 @@
+name: Fetch YouTube Playlist and Videos, Upload to Port
+
+on:
+  push:
+    branches:
+      - main 
+
+jobs:
+  fetch_and_upload:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v2
+
+      - name: Fetch YouTube Playlist Metadata
+        id: fetch_playlist
+        env:
+          YOUTUBE_API_KEY: ${{ secrets.YOUTUBE_API_KEY }}
+        run: |
+          playlistId="PL-7fHWfrqQvEUgrFz5pE-NWd6-8ixbX8w&si=IJiey01WHRwCPtgw"
+          response=$(curl -s "https://www.googleapis.com/youtube/v3/playlists?part=snippet&id=${playlistId}&key=${YOUTUBE_API_KEY}")
+          echo "$response" > playlist_metadata.json
+          echo "::set-output name=playlist_metadata::$response"
+
+      - name: Fetch Videos in Playlist
+        id: fetch_videos
+        env:
+          YOUTUBE_API_KEY: ${{ secrets.YOUTUBE_API_KEY }}
+        run: |
+          playlistId="PL-7fHWfrqQvEUgrFz5pE-NWd6-8ixbX8w&si=IJiey01WHRwCPtgw"
+          response=$(curl -s "https://www.googleapis.com/youtube/v3/playlistItems?part=snippet&maxResults=50&playlistId=${playlistId}&key=${YOUTUBE_API_KEY}")
+          echo "$response" > videos_data.json
+          echo "::set-output name=videos_data::$response"
+
+      - name: Parse Playlist and Video Data
+        id: parse_data
+        run: |
+          # Parse playlist metadata
+          playlist_data=$(cat playlist_metadata.json | jq -r '.items[0] | {id: .id, title: .snippet.title, description: .snippet.description, channel_id: .snippet.channelId, channel_title: .snippet.channelTitle, published_at: .snippet.publishedAt}')
+          echo "$playlist_data" > formatted_playlist.json
+
+          # Parse videos in the playlist
+          cat videos_data.json | jq -r '.items[] | {id: .contentDetails.videoId, title: .snippet.title, description: .snippet.description, playlist_id: "<Your_Playlist_ID>", channel_id: .snippet.channelId, published_at: .snippet.publishedAt}' > formatted_videos.json
+          echo "Formatted playlist and video data saved."
+
+      - name: Upload Playlist Metadata to Port
+        uses: port-labs/port-github-action@v1
+        with:
+          clientId: ${{ secrets.PORT_CLIENT_ID }}
+          clientSecret: ${{ secrets.PORT_CLIENT_SECRET }}
+          baseUrl: https://api.getport.io
+          operation: UPSERT
+          identifier: playlist_identifier  # Unique identifier for the playlist in Port
+          title: YouTube Playlist Metadata
+          blueprint: playlist
+          properties: |-
+            ${{ fromJSON(steps.parse_data.outputs.playlist_data) }}
+            {
+              "id": "string",
+              "title": "string",
+              "description": "string",
+              "channel_id": "string",
+              "channel_title": "string",
+              "published_at": "2024-11-09T17:05:06.020Z"
+            }
+
+      - name: Upload Videos Metadata to Port
+        uses: port-labs/port-github-action@v1
+        with:
+          clientId: ${{ secrets.PORT_CLIENT_ID }}
+          clientSecret: ${{ secrets.PORT_CLIENT_SECRET }}
+          baseUrl: https://api.getport.io
+          operation: UPSERT
+          identifier: video_identifier  # Unique identifier for the video in Port
+          title: YouTube Video Metadata
+          blueprint: video
+          properties: |-
+            ${{ fromJSON(steps.parse_data.outputs.videos_data) }}
+            {
+              "id": "string",
+              "title": "string",
+              "description": "string",
+              "playlist_id": "string",
+              "channel_id": "string",
+              "published_at": "2024-11-09T17:05:06.020Z"
+            }
