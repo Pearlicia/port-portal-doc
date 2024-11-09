@@ -37,24 +37,26 @@ jobs:
         id: parse_data
         run: |
           # Parse playlist metadata
-          cat playlist_metadata.json | jq -r '.items[0] | {
+          playlist_data=$(cat playlist_metadata.json | jq -c '.items[0] | {
             id: .id,
             title: .snippet.title,
             description: .snippet.description,
             channel_id: .snippet.channelId,
             channel_title: .snippet.channelTitle,
             published_at: .snippet.publishedAt
-          }' > formatted_playlist.json
+          }')
+          echo "::set-output name=formatted_playlist::$playlist_data"
 
           # Parse videos in the playlist
-          cat videos_data.json | jq -c '.items[] | {
+          videos_data=$(cat videos_data.json | jq -c '.items[] | {
             id: .contentDetails.videoId,
             title: .snippet.title,
             description: .snippet.description,
             playlist_id: "PL-7fHWfrqQvEUgrFz5pE-NWd6-8ixbX8w",
             channel_id: .snippet.channelId,
             published_at: .snippet.publishedAt
-          }' > formatted_videos.json
+          }')
+          echo "::set-output name=formatted_videos::$videos_data"
           echo "Formatted playlist and video data saved."
 
       - name: Upload Playlist Metadata to Port
@@ -67,8 +69,7 @@ jobs:
           identifier: playlist_${{ fromJSON(steps.fetch_playlist.outputs.playlist_metadata).id }}
           title: YouTube Playlist Metadata
           blueprint: playlist
-          properties: |
-            $(cat formatted_playlist.json)
+          properties: ${{ steps.parse_data.outputs.formatted_playlist }}
 
       - name: Upload Videos Metadata to Port
         uses: port-labs/port-github-action@v1
@@ -80,5 +81,4 @@ jobs:
           identifier: video_${{ fromJSON(steps.fetch_videos.outputs.videos_data).id }}
           title: YouTube Video Metadata
           blueprint: video
-          properties: |
-            $(cat formatted_videos.json)
+          properties: ${{ steps.parse_data.outputs.formatted_videos }}
