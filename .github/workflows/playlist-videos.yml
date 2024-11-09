@@ -51,7 +51,7 @@ jobs:
           clientSecret: ${{ secrets.PORT_CLIENT_SECRET }}
           baseUrl: https://api.getport.io
           operation: UPSERT
-          identifier: playlist_identifier  # Unique identifier for the playlist in Port
+          identifier: playlist  # Unique identifier for the playlist in Port
           title: YouTube Playlist Metadata
           blueprint: playlist
           properties: |-
@@ -71,7 +71,7 @@ jobs:
           clientSecret: ${{ secrets.PORT_CLIENT_SECRET }}
           baseUrl: https://api.getport.io
           operation: UPSERT
-          identifier: video_identifier  # Unique identifier for the video in Port
+          identifier: video  # Unique identifier for the video in Port
           title: YouTube Video Metadata
           blueprint: video
           properties: |-
