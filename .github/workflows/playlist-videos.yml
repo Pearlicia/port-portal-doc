@@ -55,8 +55,6 @@ jobs:
           title: YouTube Playlist Metadata
           blueprint: playlist
           properties: |-
-            ${{ fromJSON(steps.parse_data.outputs.playlist_data) }}
-          properties: |
             {
               "id": "string",
               "title": "string",
@@ -77,8 +75,6 @@ jobs:
           title: YouTube Video Metadata
           blueprint: video
           properties: |-
-            ${{ fromJSON(steps.parse_data.outputs.videos_data) }}
-          properties: |
             {
               "id": "string",
               "description": "string",
