@@ -41,7 +41,7 @@ jobs:
           echo "$playlist_data" > formatted_playlist.json
 
           # Parse videos in the playlist
-          cat videos_data.json | jq -r '.items[] | {id: .contentDetails.videoId, title: .snippet.title, description: .snippet.description, playlist_id: "<Your_Playlist_ID>", channel_id: .snippet.channelId, published_at: .snippet.publishedAt}' > formatted_videos.json
+          cat videos_data.json | jq -r '.items[] | {id: .contentDetails.videoId, title: .snippet.title, description: .snippet.description, playlist_id: "PL-7fHWfrqQvEUgrFz5pE-NWd6-8ixbX8w&si=IJiey01WHRwCPtgw", channel_id: .snippet.channelId, published_at: .snippet.publishedAt}' > formatted_videos.json
           echo "Formatted playlist and video data saved."
 
       - name: Upload Playlist Metadata to Port
@@ -56,6 +56,7 @@ jobs:
           blueprint: playlist
           properties: |-
             ${{ fromJSON(steps.parse_data.outputs.playlist_data) }}
+          properties: |-
             {
               "id": "string",
               "title": "string",
@@ -77,6 +78,7 @@ jobs:
           blueprint: video
           properties: |-
             ${{ fromJSON(steps.parse_data.outputs.videos_data) }}
+          properties: |-
             {
               "id": "string",
               "title": "string",
