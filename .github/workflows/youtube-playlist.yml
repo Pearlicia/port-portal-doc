@@ -19,7 +19,7 @@ jobs:
         env:
           YOUTUBE_API_KEY: ${{ secrets.YOUTUBE_API_KEY }}
         run: |
-          playlistId="<Your_Playlist_ID>"  # Replace with actual playlist ID
+          playlistId="PL-7fHWfrqQvEUgrFz5pE-NWd6-8ixbX8w&si=oRUG8CYA_ZgBL65p"
           response=$(curl -s "https://www.googleapis.com/youtube/v3/playlistItems?part=snippet&maxResults=50&playlistId=${playlistId}&key=${YOUTUBE_API_KEY}")
           echo "$response" > playlist_data.json
           echo "::set-output name=playlist_data::$response"
