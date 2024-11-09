@@ -59,6 +59,18 @@ jobs:
           echo "::set-output name=formatted_videos::$videos_data"
           echo "Formatted playlist and video data saved."
 
+      - name: Set Playlist Properties
+        id: set_playlist_properties
+        run: |
+          playlist_data=${{ steps.parse_data.outputs.formatted_playlist }}
+          echo "PROPERTIES_PLAYLIST=$playlist_data" >> $GITHUB_ENV
+
+      - name: Set Videos Properties
+        id: set_videos_properties
+        run: |
+          videos_data=${{ steps.parse_data.outputs.formatted_videos }}
+          echo "PROPERTIES_VIDEOS=$videos_data" >> $GITHUB_ENV
+
       - name: Upload Playlist Metadata to Port
         uses: port-labs/port-github-action@v1
         with:
@@ -69,15 +81,7 @@ jobs:
           identifier: ${{ fromJSON(steps.parse_data.outputs.formatted_playlist).id }}
           title: YouTube Playlist Metadata
           blueprint: playlist
-          properties: |-
-            {
-              "id": "${{ fromJSON(steps.parse_data.outputs.formatted_playlist).id }}",
-              "title": "${{ fromJSON(steps.parse_data.outputs.formatted_playlist).title }}",
-              "description": "${{ fromJSON(steps.parse_data.outputs.formatted_playlist).description }}",
-              "channel_id": "${{ fromJSON(steps.parse_data.outputs.formatted_playlist).channel_id }}",
-              "channel_title": "${{ fromJSON(steps.parse_data.outputs.formatted_playlist).channel_title }}",
-              "published_at": "${{ fromJSON(steps.parse_data.outputs.formatted_playlist).published_at }}"
-            }
+          properties: ${{ env.PROPERTIES_PLAYLIST }}
 
       - name: Upload Videos Metadata to Port
         uses: port-labs/port-github-action@v1
@@ -89,12 +93,4 @@ jobs:
           identifier: ${{ fromJSON(steps.parse_data.outputs.formatted_videos).id }}
           title: YouTube Video Metadata
           blueprint: video
-          properties: |-
-            {
-              "id": "${{ fromJSON(steps.parse_data.outputs.formatted_videos).id }}",
-              "title": "${{ fromJSON(steps.parse_data.outputs.formatted_videos).title }}",
-              "description": "${{ fromJSON(steps.parse_data.outputs.formatted_videos).description }}",
-              "playlist_id": "PL-7fHWfrqQvEUgrFz5pE-NWd6-8ixbX8w",
-              "channel_id": "${{ fromJSON(steps.parse_data.outputs.formatted_videos).channel_id }}",
-              "published_at": "${{ fromJSON(steps.parse_data.outputs.formatted_videos).published_at }}"
-            }
+          properties: ${{ env.PROPERTIES_VIDEOS }}
