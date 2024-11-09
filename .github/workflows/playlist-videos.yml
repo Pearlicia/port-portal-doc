@@ -55,14 +55,17 @@ jobs:
           title: YouTube Playlist Metadata
           blueprint: playlist
           properties: |-
-            {
-              "id": "string",
-              "title": "string",
-              "description": "string",
-              "channel_id": "string",
-              "channel_title": "string",
-              "published_at": "2024-11-09T17:05:06.020Z"
-            }
+            ${{ fromJSON(steps.parse_data.outputs.playlist_data) }}
+        
+          #properties: |-
+            #{
+              #"id": "string",
+             # "title": "string",
+              #"description": "string",
+             # "channel_id": "string",
+              #"channel_title": "string",
+             # "published_at": "2024-11-09T17:05:06.020Z"
+            #}
 
       - name: Upload Videos Metadata to Port
         uses: port-labs/port-github-action@v1
@@ -75,17 +78,20 @@ jobs:
           title: YouTube Video
           blueprint: video
           properties: |-
-            {
-              "id": "string",
-              "description": "string",
-              "title": "string",
-              "published_at": "2024-11-09T18:51:33.980Z",
-              "channel_id": "string",
-              "channel_title": "string",
-              "category_id": "string",
-              "duration": "string",
-              "caption": "string",
-              "views": 0,
-              "number_of_likes": 0,
-              "number_of_comments": 0
-            }
+            ${{ fromJSON(steps.parse_data.outputs.videos_data) }}
+          
+         # properties: |-
+            #{
+             # "id": "string",
+              #"description": "string",
+             # "title": "string",
+             # "published_at": "2024-11-09T18:51:33.980Z",
+            #  "channel_id": "string",
+             # "channel_title": "string",
+              #"category_id": "string",
+             # "duration": "string",
+              #"caption": "string",
+              #"views": 0,
+              #"number_of_likes": 0,
+             # "number_of_comments": 0
+           # }
