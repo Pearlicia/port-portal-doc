@@ -1,0 +1,107 @@
+name: Fetch YouTube Playlist and Videos, Upload to Port
+
+on:
+  push:
+    branches:
+      - main  # Trigger the workflow on commits to the main branch
+
+jobs:
+  fetch_and_upload:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v2
+
+      - name: Fetch YouTube Playlist Metadata
+        id: fetch_playlist
+        env:
+          YOUTUBE_API_KEY: ${{ secrets.YOUTUBE_API_KEY }}
+        run: |
+          playlistId="PL-7fHWfrqQvEUgrFz5pE-NWd6-8ixbX8w"  # Ensure only playlist ID
+          response=$(curl -s "https://www.googleapis.com/youtube/v3/playlists?part=snippet&id=${playlistId}&key=${YOUTUBE_API_KEY}")
+          echo "$response" > playlist_metadata.json
+          echo "::set-output name=playlist_metadata::$response"
+
+      - name: Fetch Videos in Playlist
+        id: fetch_videos
+        env:
+          YOUTUBE_API_KEY: ${{ secrets.YOUTUBE_API_KEY }}
+        run: |
+          playlistId="PL-7fHWfrqQvEUgrFz5pE-NWd6-8ixbX8w"
+          response=$(curl -s "https://www.googleapis.com/youtube/v3/playlistItems?part=snippet,contentDetails&maxResults=50&playlistId=${playlistId}&key=${YOUTUBE_API_KEY}")
+          echo "$response" > videos_data.json
+          echo "::set-output name=videos_data::$response"
+
+      - name: Fetch Video Details (Duration, Views, Likes, Comments)
+        id: fetch_video_details
+        env:
+          YOUTUBE_API_KEY: ${{ secrets.YOUTUBE_API_KEY }}
+        run: |
+          video_ids=$(cat videos_data.json | jq -r '.items[].contentDetails.videoId' | paste -sd, -)
+          response=$(curl -s "https://www.googleapis.com/youtube/v3/videos?part=contentDetails,statistics&id=${video_ids}&key=${YOUTUBE_API_KEY}")
+          echo "$response" > video_details.json
+          echo "::set-output name=video_details::$response"
+
+      - name: Parse Playlist and Video Data
+        id: parse_data
+        run: |
+          # Parse playlist metadata
+          playlist_data=$(cat playlist_metadata.json | jq -c '.items[0] | {
+            id: .id,
+            title: .snippet.title,
+            description: .snippet.description,
+            channel_id: .snippet.channelId,
+            channel_title: .snippet.channelTitle,
+            published_at: .snippet.publishedAt
+          }')
+          echo "PROPERTIES_PLAYLIST=$playlist_data" >> $GITHUB_ENV
+
+          # Parse videos in the playlist with additional details
+          jq -c '.items[]' video_details.json | while read video; do
+            video_id=$(echo $video | jq -r '.id')
+            duration=$(echo $video | jq -r '.contentDetails.duration')
+            view_count=$(echo $video | jq -r '.statistics.viewCount')
+            like_count=$(echo $video | jq -r '.statistics.likeCount')
+            comment_count=$(echo $video | jq -r '.statistics.commentCount')
+            video_data=$(cat videos_data.json | jq -c --arg video_id "$video_id" --arg duration "$duration" --arg view_count "$view_count" --arg like_count "$like_count" --arg comment_count "$comment_count" '
+              .items[] | select(.contentDetails.videoId == $video_id) | {
+                id: .contentDetails.videoId,
+                title: .snippet.title,
+                description: .snippet.description,
+                playlist_id: "PL-7fHWfrqQvEUgrFz5pE-NWd6-8ixbX8w",
+                channel_id: .snippet.channelId,
+                published_at: .snippet.publishedAt,
+                duration: $duration,
+                views: $view_count,
+                likes: $like_count,
+                comments: $comment_count
+              }')
+            echo "$video_data" >> formatted_videos.json
+          done
+          echo "Formatted playlist and video data saved."
+          echo "PROPERTIES_VIDEOS=$(cat formatted_videos.json)" >> $GITHUB_ENV
+
+      - name: Upload Playlist Metadata to Port
+        uses: port-labs/port-github-action@v1
+        with:
+          clientId: ${{ secrets.PORT_CLIENT_ID }}
+          clientSecret: ${{ secrets.PORT_CLIENT_SECRET }}
+          baseUrl: https://api.getport.io
+          operation: UPSERT
+          identifier: ${{ fromJSON(env.PROPERTIES_PLAYLIST).id }}
+          title: ${{ fromJSON(env.PROPERTIES_PLAYLIST).title }}
+          blueprint: playlist
+          properties: ${{ env.PROPERTIES_PLAYLIST }}
+
+      - name: Upload Videos Metadata to Port
+        uses: port-labs/port-github-action@v1
+        with:
+          clientId: ${{ secrets.PORT_CLIENT_ID }}
+          clientSecret: ${{ secrets.PORT_CLIENT_SECRET }}
+          baseUrl: https://api.getport.io
+          operation: UPSERT
+          identifier: ${{ fromJSON(env.PROPERTIES_VIDEOS).id }}
+          title: ${{ fromJSON(env.PROPERTIES_VIDEOS).title }}
+          blueprint: video
+          properties: ${{ env.PROPERTIES_VIDEOS }}
