@@ -253,15 +253,15 @@ Once the data is fetched, we'll use Port’s API to upload it.
 
 Port offers tools to visualize data, allowing you to track key metrics like view counts, publishing trends, and playlist growth. Here are two examples of valuable visualizations:
 
-### Visualization 1: Video Publish Trends
+### Visualization 1: Videos count
 - **Objective**: Show the number of videos published over time.
-- **Usage**: Identify how frequently new videos are added to the playlist.
+- **Usage**: Identify the number of videos added to the playlist.
+
+![Videos-count](./assets/dashboard-vid-count.png)
 
 ### Visualization 2: View Count Distribution
 - **Objective**: Display the view count of each video to identify popular content.
 - **Usage**: Understand which topics or types of content resonate most with viewers.
-
-After creating these visualizations, add screenshots or explanations to your guide to help users interpret the data.
 
 ## Conclusion
 With this guide, you now have a blueprint to create a YouTube playlist catalog in Port. By automating data ingestion and using visualizations, Port provides a powerful, centralized solution to manage and understand video data at scale. This approach will save time, ensure data consistency, and provide actionable insights for your audience.
