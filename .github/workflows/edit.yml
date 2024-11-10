@@ -56,7 +56,11 @@ jobs:
               description: .snippet.description,
               channel_id: .snippet.channelId,
               channel_title: .snippet.channelTitle,
-              published_at: .contentDetails.videoPublishedAt
+              published_at: .contentDetails.videoPublishedAt,
+              view_count: .statistics.viewCount,
+              like_count: .statistics.likeCount,
+              comment_count: .statistics.commentCount,
+              duration: .contentDetails.duration
             }
           }' > processed_data.json
 

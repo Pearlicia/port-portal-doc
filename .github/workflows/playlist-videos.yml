@@ -58,9 +58,9 @@ jobs:
               channel_title: .channelTitle,
               published_at: .snippet.publishedAt,
               duration: .contentDetails.duration,
-              view: .statistics.viewCount,
-              number_of_comments: .statistics.commentCount,
-              number_of_like: .statistics.likeCount,
+              view_count: .statistics.viewCount,
+              comment_count: .statistics.commentCount,
+              like_count: .statistics.likeCount,
               category_id: .categoryId,
               caption: .contentDetails.caption
             }
