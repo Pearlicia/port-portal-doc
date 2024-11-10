@@ -18,7 +18,7 @@ jobs:
         env:
           YOUTUBE_API_KEY: ${{ secrets.YOUTUBE_API_KEY }}
         run: |
-          playlistId="PL-7fHWfrqQvEUgrFz5pE-NWd6-8ixbX8w"  # Ensure only playlist ID
+          playlistId="PL-7fHWfrqQvEUgrFz5pE-NWd6-8ixbX8w"
           response=$(curl -s "https://www.googleapis.com/youtube/v3/playlists?part=snippet&id=${playlistId}&key=${YOUTUBE_API_KEY}")
           echo "$response" > playlist_metadata.json
           echo "::set-output name=playlist_metadata::$response"
@@ -57,6 +57,9 @@ jobs:
           }')
           echo "PROPERTIES_PLAYLIST=$playlist_data" >> $GITHUB_ENV
 
+          # Initialize an empty array for videos
+          echo "[]" > formatted_videos.json
+
           # Parse videos in the playlist with additional details
           jq -c '.items[]' video_details.json | while read video; do
             video_id=$(echo $video | jq -r '.id')
@@ -77,7 +80,8 @@ jobs:
                 likes: $like_count,
                 comments: $comment_count
               }')
-            echo "$video_data" >> formatted_videos.json
+            # Append each video data object to the array
+            jq --argjson video "$video_data" '. += [$video]' formatted_videos.json > tmp.json && mv tmp.json formatted_videos.json
           done
           echo "Formatted playlist and video data saved."
           echo "PROPERTIES_VIDEOS=$(cat formatted_videos.json)" >> $GITHUB_ENV
@@ -101,7 +105,7 @@ jobs:
           clientSecret: ${{ secrets.PORT_CLIENT_SECRET }}
           baseUrl: https://api.getport.io
           operation: UPSERT
-          identifier: ${{ fromJSON(env.PROPERTIES_VIDEOS).id }}
-          title: ${{ fromJSON(env.PROPERTIES_VIDEOS).title }}
+          identifier: ${{ fromJSON(env.PROPERTIES_VIDEOS)[0].id }}  # Assuming single video upload
+          title: ${{ fromJSON(env.PROPERTIES_VIDEOS)[0].title }}   # Replace as needed for individual processing
           blueprint: video
-          properties: ${{ env.PROPERTIES_VIDEOS }}
+          properties: ${{ fromJSON(env.PROPERTIES_VIDEOS)[0] }}   # Or iterate through each video if needed
