@@ -4,7 +4,7 @@ name: Fetch YouTube Playlist and Upload to Port
 on:
   push:
     branches:
-      - main 
+      - feature
 
 jobs:
   fetch_and_upload:
