@@ -1,83 +1,69 @@
-name: Fetch YouTube Playlist and Videos, Upload to Port
+name: Ingest YouTube Playlist Data to Port
 
 on:
   push:
     branches:
-      - main  # Trigger the workflow on commits to the main branch
+      - main
+  workflow_dispatch: # Allows manual trigger
 
 jobs:
-  fetch_and_upload:
+  fetch-and-ingest:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout Repository
+      - name: Check out the repository
         uses: actions/checkout@v2
 
-      - name: Fetch YouTube Playlist Metadata
-        id: fetch_playlist
+      - name: Install Dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y jq
+
+      - name: Fetch YouTube Playlist Data
         env:
           YOUTUBE_API_KEY: ${{ secrets.YOUTUBE_API_KEY }}
+          PLAYLIST_ID: ${{ secrets.PLAYLIST_ID }}
         run: |
-          playlistId="PL-7fHWfrqQvEUgrFz5pE-NWd6-8ixbX8w"  # Ensure only playlist ID
-          response=$(curl -s "https://www.googleapis.com/youtube/v3/playlists?part=snippet&id=${playlistId}&key=${YOUTUBE_API_KEY}")
-          echo "$response" > playlist_metadata.json
-          echo "::set-output name=playlist_metadata::$response"
+          # Fetch playlist items (videos) from the YouTube API and save to data.json
+          curl -X GET "https://www.googleapis.com/youtube/v3/playlistItems?playlistId=${PLAYLIST_ID}&part=snippet,contentDetails&key=${YOUTUBE_API_KEY}&maxResults=50" > data.json
 
-      - name: Fetch Videos in Playlist
-        id: fetch_videos
+      - name: Retrieve Port Access Token
         env:
-          YOUTUBE_API_KEY: ${{ secrets.YOUTUBE_API_KEY }}
+          CLIENT_ID: ${{ secrets.PORT_CLIENT_ID }}
+          CLIENT_SECRET: ${{ secrets.PORT_CLIENT_SECRET }}
         run: |
-          playlistId="PL-7fHWfrqQvEUgrFz5pE-NWd6-8ixbX8w"
-          response=$(curl -s "https://www.googleapis.com/youtube/v3/playlistItems?part=snippet,contentDetails&maxResults=50&playlistId=${playlistId}&key=${YOUTUBE_API_KEY}")
-          echo "$response" > videos_data.json
-          echo "::set-output name=videos_data::$response"
+          # Retrieve an access token from Port
+          access_token=$(curl --location --request POST 'https://api.getport.io/v1/auth/access_token' \
+            --header 'Content-Type: application/json' \
+            --data-raw '{
+              "clientId": "'"$CLIENT_ID"'",
+              "clientSecret": "'"$CLIENT_SECRET"'"
+            }' | jq '.accessToken' | sed 's/"//g')
+          echo "access_token=$access_token" >> $GITHUB_ENV
 
-      - name: Parse Playlist and Video Data
-        id: parse_data
+      - name: Process YouTube Data and Ingest to Port
+        env:
+          ACCESS_TOKEN: ${{ env.access_token }}
+          BLUEPRINT_ID: ${{ secrets.PORT_BLUEPRINT_ID }}
         run: |
-          # Parse playlist metadata
-          playlist_data=$(cat playlist_metadata.json | jq -c '.items[0] | {
-            id: .id,
+          # Parse data.json and extract required fields for each video
+          cat data.json | jq -c '.items[] | {
+            identifier: .contentDetails.videoId,
             title: .snippet.title,
-            description: .snippet.description,
-            channel_id: .snippet.channelId,
-            channel_title: .snippet.channelTitle,
-            published_at: .snippet.publishedAt
-          }')
-          echo "PROPERTIES_PLAYLIST=$playlist_data" >> $GITHUB_ENV
+            properties: {
+              id: .contentDetails.videoId,
+              title: .snippet.title,
+              description: .snippet.description,
+              channel_id: .snippet.channelId,
+              channel_title: .snippet.channelTitle,
+              published_at: .contentDetails.videoPublishedAt
+            }
+          }' > processed_data.json
 
-          # Parse videos in the playlist
-          videos_data=$(cat videos_data.json | jq -c '.items[] | {
-            id: .contentDetails.videoId,
-            title: .snippet.title,
-            description: .snippet.description,
-            playlist_id: "PL-7fHWfrqQvEUgrFz5pE-NWd6-8ixbX8w",
-            channel_id: .snippet.channelId,
-            published_at: .snippet.publishedAt
-          }')
-          echo "PROPERTIES_VIDEOS=$videos_data" >> $GITHUB_ENV
-
-      - name: Upload Playlist Metadata to Port
-        uses: port-labs/port-github-action@v1
-        with:
-          clientId: ${{ secrets.PORT_CLIENT_ID }}
-          clientSecret: ${{ secrets.PORT_CLIENT_SECRET }}
-          baseUrl: https://api.getport.io
-          operation: UPSERT
-          identifier: ${{ fromJSON(env.PROPERTIES_PLAYLIST).id }}
-          title: ${{ fromJSON(env.PROPERTIES_PLAYLIST).title }}
-          blueprint: playlist
-          properties: ${{ env.PROPERTIES_PLAYLIST }}
-
-      - name: Upload Videos Metadata to Port
-        uses: port-labs/port-github-action@v1
-        with:
-          clientId: ${{ secrets.PORT_CLIENT_ID }}
-          clientSecret: ${{ secrets.PORT_CLIENT_SECRET }}
-          baseUrl: https://api.getport.io
-          operation: UPSERT
-          identifier: ${{ fromJSON(env.PROPERTIES_VIDEOS).id }}
-          title: ${{ fromJSON(env.PROPERTIES_VIDEOS).title }}
-          blueprint: video
-          properties: ${{ env.PROPERTIES_VIDEOS }}
+          # Loop through each video entry in processed_data.json and ingest to Port
+          while IFS= read -r video; do
+            curl --location --request POST "https://api.getport.io/v1/blueprints/${BLUEPRINT_ID}/entities?upsert=true" \
+              --header "Authorization: Bearer $ACCESS_TOKEN" \
+              --header "Content-Type: application/json" \
+              --data-raw "$video"
+          done < processed_data.json
