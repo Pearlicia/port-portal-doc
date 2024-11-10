@@ -44,14 +44,15 @@ jobs:
         id: parse_data
         run: |
           # Parse playlist metadata
-          jq -c '.items[0] | {
+          playlist_data=$(jq -c '.items[0] | {
             id: .id,
             title: .snippet.title,
             description: .snippet.description,
             channel_id: .snippet.channelId,
             channel_title: .snippet.channelTitle,
             published_at: .snippet.publishedAt
-          }' playlist_metadata.json > parsed_playlist.json
+          }' playlist_metadata.json)
+          echo "::set-output name=playlist_data::$playlist_data"
 
           # Initialize an empty JSON array for videos
           echo "[]" > parsed_videos.json
@@ -80,6 +81,9 @@ jobs:
             jq --argjson video "$video_data" '. += [$video]' parsed_videos.json > tmp.json && mv tmp.json parsed_videos.json
           done
 
+          videos_data=$(cat parsed_videos.json)
+          echo "::set-output name=videos_data::$videos_data"
+
       - name: Upload Playlist Metadata to Port
         uses: port-labs/port-github-action@v1
         with:
@@ -87,10 +91,10 @@ jobs:
           clientSecret: ${{ secrets.PORT_CLIENT_SECRET }}
           baseUrl: https://api.getport.io
           operation: UPSERT
-          identifier: ${{ steps.parse_data.outputs.playlist_id }}
-          title: ${{ steps.parse_data.outputs.playlist_title }}
+          identifier: ${{ steps.parse_data.outputs.playlist_data.id }}
+          title: ${{ steps.parse_data.outputs.playlist_data.title }}
           blueprint: playlist
-          properties: $(< parsed_playlist.json)
+          properties: ${{ steps.parse_data.outputs.playlist_data }}
 
       - name: Upload Videos Metadata to Port
         uses: port-labs/port-github-action@v1
@@ -99,7 +103,7 @@ jobs:
           clientSecret: ${{ secrets.PORT_CLIENT_SECRET }}
           baseUrl: https://api.getport.io
           operation: UPSERT
-          identifier: ${{ steps.parse_data.outputs.video_id }}
-          title: ${{ steps.parse_data.outputs.video_title }}
+          identifier: ${{ steps.parse_data.outputs.videos_data }}
+          title: ${{ steps.parse_data.outputs.videos_data.title }}
           blueprint: video
-          properties: $(< parsed_videos.json)
+          properties: ${{ steps.parse_data.outputs.videos_data }}
