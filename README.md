@@ -78,19 +78,6 @@ The first step is to define a model for the YouTube playlist and videos in Port.
     - **Caption** (Number)
     ![Video-blueprint](./assets/video-playlist.png)
 
-### 1.2. Define Relationships
-- Link each video to the playlist using a *one-to-many relationship*. This means one playlist blueprint can contain multiple video blueprints.
-Click on Video blueprint, then click on New relation
-  - On Title, enter any title of your choice
-  - On Description, Enter any description
-  - On Related to, select Playlist
-  - On Limit, select 1 entity
-  - On Required, select False
-  Then click Create
-  ![Create-relation](./assets/create-relation.png)
-
-  ![Relationship](./assets/relation-between-video-n-playlist.png)
-
 
 **Example JSON for Playlist Blueprint**:
 ```json
@@ -131,6 +118,19 @@ Click on Video blueprint, then click on New relation
   }
 }
 ```
+
+### 1.2. Define Relationships
+- Link each video to the playlist using a *one-to-many relationship*. This means one playlist blueprint can contain multiple video blueprints.
+Click on Video blueprint, then click on New relation
+  - On Title, enter any title of your choice
+  - On Description, Enter any description
+  - On Related to, select Playlist
+  - On Limit, select 1 entity
+  - On Required, select False
+  Then click Create
+  ![Create-relation](./assets/create-relation.png)
+
+  ![Relationship](./assets/relation-between-video-n-playlist.png)
 
 ## Step 2: Set Up GitHub Workflow
 
