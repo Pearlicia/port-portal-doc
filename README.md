@@ -61,7 +61,9 @@ The first step is to define a model for the YouTube playlist and videos in Port.
     - **Published At** (Date time)
     - **Channel Id** (String)
     - **Channel Title** (String)
+    
     ![Playlist-blueprint](./assets/playlist-blueprint.png)
+    
 - **Video Blueprint**: Each video is an item within the playlist.
   - **Properties**:
     - **Video ID** (String)
@@ -76,6 +78,8 @@ The first step is to define a model for the YouTube playlist and videos in Port.
     - **Number of Likes** (Number)
     - **Category Id** (String)
     - **Caption** (Number)
+   
+    
     ![Video-blueprint](./assets/video-playlist.png)
 
 
@@ -128,6 +132,7 @@ Click on Video blueprint, then click on New relation
   - On Limit, select 1 entity
   - On Required, select False
   Then click Create
+
   ![Create-relation](./assets/create-relation.png)
 
   ![Relationship](./assets/relation-between-video-n-playlist.png)
