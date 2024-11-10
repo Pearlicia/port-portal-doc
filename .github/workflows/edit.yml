@@ -1,4 +1,4 @@
-name: Ingest YouTube Playlist Data to Port
+name: Ingest YouTube Playlist Data to Port using API
 
 on:
   push:
