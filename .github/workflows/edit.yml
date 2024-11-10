@@ -36,7 +36,7 @@ jobs:
       - name: Parse Playlist and Video Data
         id: parse_data
         run: |
-          # Parse playlist metadata and escape for JSON compatibility
+          # Parse playlist metadata
           playlist_data=$(cat playlist_metadata.json | jq -c '.items[0] | {
             id: .id,
             title: .snippet.title,
@@ -47,7 +47,7 @@ jobs:
           }')
           echo "::set-output name=formatted_playlist::$playlist_data"
 
-          # Parse videos in the playlist and escape for JSON compatibility
+          # Parse videos in the playlist
           videos_data=$(cat videos_data.json | jq -c '.items[] | {
             id: .contentDetails.videoId,
             title: .snippet.title,
@@ -59,20 +59,6 @@ jobs:
           echo "::set-output name=formatted_videos::$videos_data"
           echo "Formatted playlist and video data saved."
 
-      - name: Set Playlist Properties
-        id: set_playlist_properties
-        run: |
-          # Escape JSON string for the playlist properties
-          playlist_data=${{ steps.parse_data.outputs.formatted_playlist }}
-          echo "PROPERTIES_PLAYLIST=$(echo "$playlist_data" | jq -R .)" >> $GITHUB_ENV
-
-      - name: Set Videos Properties
-        id: set_videos_properties
-        run: |
-          # Escape JSON string for the videos properties
-          videos_data=${{ steps.parse_data.outputs.formatted_videos }}
-          echo "PROPERTIES_VIDEOS=$(echo "$videos_data" | jq -R .)" >> $GITHUB_ENV
-
       - name: Upload Playlist Metadata to Port
         uses: port-labs/port-github-action@v1
         with:
@@ -81,9 +67,9 @@ jobs:
           baseUrl: https://api.getport.io
           operation: UPSERT
           identifier: ${{ fromJSON(steps.parse_data.outputs.formatted_playlist).id }}
-          title: YouTube Playlist Metadata
+          title: ${{ fromJSON(steps.parse_data.outputs.formatted_playlist).title }}
           blueprint: playlist
-          properties: ${{ env.PROPERTIES_PLAYLIST }}
+          properties: ${{ fromJSON(steps.parse_data.outputs.formatted_playlist) }}
 
       - name: Upload Videos Metadata to Port
         uses: port-labs/port-github-action@v1
@@ -93,6 +79,6 @@ jobs:
           baseUrl: https://api.getport.io
           operation: UPSERT
           identifier: ${{ fromJSON(steps.parse_data.outputs.formatted_videos).id }}
-          title: YouTube Video Metadata
+          title: ${{ fromJSON(steps.parse_data.outputs.formatted_videos).title }}
           blueprint: video
-          properties: ${{ env.PROPERTIES_VIDEOS }}
+          properties: ${{ fromJSON(steps.parse_data.outputs.formatted_videos) }}
