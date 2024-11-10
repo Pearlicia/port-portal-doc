@@ -36,7 +36,7 @@ jobs:
       - name: Parse Playlist and Video Data
         id: parse_data
         run: |
-          # Parse playlist metadata
+          # Parse playlist metadata and escape for JSON compatibility
           playlist_data=$(cat playlist_metadata.json | jq -c '.items[0] | {
             id: .id,
             title: .snippet.title,
@@ -47,7 +47,7 @@ jobs:
           }')
           echo "::set-output name=formatted_playlist::$playlist_data"
 
-          # Parse videos in the playlist
+          # Parse videos in the playlist and escape for JSON compatibility
           videos_data=$(cat videos_data.json | jq -c '.items[] | {
             id: .contentDetails.videoId,
             title: .snippet.title,
@@ -62,14 +62,16 @@ jobs:
       - name: Set Playlist Properties
         id: set_playlist_properties
         run: |
+          # Escape JSON string for the playlist properties
           playlist_data=${{ steps.parse_data.outputs.formatted_playlist }}
-          echo "PROPERTIES_PLAYLIST=$playlist_data" >> $GITHUB_ENV
+          echo "PROPERTIES_PLAYLIST=$(echo "$playlist_data" | jq -R .)" >> $GITHUB_ENV
 
       - name: Set Videos Properties
         id: set_videos_properties
         run: |
+          # Escape JSON string for the videos properties
           videos_data=${{ steps.parse_data.outputs.formatted_videos }}
-          echo "PROPERTIES_VIDEOS=$videos_data" >> $GITHUB_ENV
+          echo "PROPERTIES_VIDEOS=$(echo "$videos_data" | jq -R .)" >> $GITHUB_ENV
 
       - name: Upload Playlist Metadata to Port
         uses: port-labs/port-github-action@v1
