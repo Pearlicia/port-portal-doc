@@ -18,7 +18,7 @@ jobs:
         env:
           YOUTUBE_API_KEY: ${{ secrets.YOUTUBE_API_KEY }}
         run: |
-          playlistId="PL-7fHWfrqQvEUgrFz5pE-NWd6-8ixbX8w"
+          playlistId="PL-7fHWfrqQvEUgrFz5pE-NWd6-8ixbX8w"  # Ensure only playlist ID
           response=$(curl -s "https://www.googleapis.com/youtube/v3/playlists?part=snippet&id=${playlistId}&key=${YOUTUBE_API_KEY}")
           echo "$response" > playlist_metadata.json
           echo "::set-output name=playlist_metadata::$response"
@@ -55,7 +55,7 @@ jobs:
             channel_title: .snippet.channelTitle,
             published_at: .snippet.publishedAt
           }')
-          echo "PROPERTIES_PLAYLIST=$playlist_data" >> $GITHUB_ENV
+          echo "PROPERTIES_PLAYLIST=\"$playlist_data\"" >> $GITHUB_ENV
 
           # Initialize an empty array for videos
           echo "[]" > formatted_videos.json
@@ -83,8 +83,11 @@ jobs:
             # Append each video data object to the array
             jq --argjson video "$video_data" '. += [$video]' formatted_videos.json > tmp.json && mv tmp.json formatted_videos.json
           done
-          echo "Formatted playlist and video data saved."
-          echo "PROPERTIES_VIDEOS=$(cat formatted_videos.json)" >> $GITHUB_ENV
+
+          # Save the formatted video data to a temporary file
+          videos_data=$(jq -c . formatted_videos.json)
+          echo "$videos_data" > formatted_videos_data.json
+          echo "PROPERTIES_VIDEOS_FILE=formatted_videos_data.json" >> $GITHUB_ENV
 
       - name: Upload Playlist Metadata to Port
         uses: port-labs/port-github-action@v1
@@ -105,7 +108,7 @@ jobs:
           clientSecret: ${{ secrets.PORT_CLIENT_SECRET }}
           baseUrl: https://api.getport.io
           operation: UPSERT
-          identifier: ${{ fromJSON(env.PROPERTIES_VIDEOS)[0].id }}  # Assuming single video upload
-          title: ${{ fromJSON(env.PROPERTIES_VIDEOS)[0].title }}   # Replace as needed for individual processing
+          identifier: ${{ fromJSON(env.PROPERTIES_VIDEOS_FILE).id }}
+          title: ${{ fromJSON(env.PROPERTIES_VIDEOS_FILE).title }}
           blueprint: video
-          properties: ${{ fromJSON(env.PROPERTIES_VIDEOS)[0] }}   # Or iterate through each video if needed
+          properties: ${{ env.PROPERTIES_VIDEOS_FILE }}
