@@ -46,7 +46,7 @@ jobs:
       - name: Process YouTube Data and Ingest to Port
         env:
           ACCESS_TOKEN: ${{ env.access_token }}
-          BLUEPRINT_ID: ${{ secrets.BLUEPRINT_ID }}
+          BLUEPRINT_ID: ${{ secrets.PORT.BLUEPRINT_ID }}
         run: |
           # Parse data.json and extract required fields for each video
           cat data.json | jq -c '.items[] | {
