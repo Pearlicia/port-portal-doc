@@ -27,7 +27,7 @@ jobs:
           PLAYLIST_ID: ${{ secrets.PLAYLIST_ID }}
         run: |
           # Fetch playlist items (videos) from the YouTube API and save to data.json
-          curl -X GET "https://www.googleapis.com/youtube/v3/playlistItems?playlistId=${PLAYLIST_ID}&part=snippet,contentDetails&key=${YOUTUBE_API_KEY}&maxResults=50" > data.json
+          curl -X GET "https://www.googleapis.com/youtube/v3/playlistItems?playlistId=${PLAYLIST_ID}&part=snippet,contentDetails,statistics&key=${YOUTUBE_API_KEY}&maxResults=50" > data.json
 
       - name: Retrieve Port Access Token
         env:
