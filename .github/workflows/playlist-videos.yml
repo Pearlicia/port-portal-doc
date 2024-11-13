@@ -3,7 +3,7 @@ name: Ingest YouTube Playlist Data to Port using API
 on:
   push:
     branches:
-      - main
+      - feat
   workflow_dispatch: 
 
 jobs:
