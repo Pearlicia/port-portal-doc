@@ -10,7 +10,7 @@
       "properties": {
         "workflow_name": {
           "icon": "DefaultProperty",
-          "title": "Workflow Name",
+          "title": "Trigger playlist workflow",
           "type": "string"
         }
       },
@@ -21,8 +21,8 @@
   },
   "invocationMethod": {
     "type": "GITHUB",
-    "org": "<GITHUB_ORG_NAME>",
-    "repo": "<GITHUB_REPO_NAME>",
+    "org": "Pearlicia",
+    "repo": "port-portal-doc",
     "workflow": "{{ .inputs.\"workflow_name\" }}",
     "reportWorkflowStatus": true
   },
