@@ -1,0 +1,30 @@
+{
+  "identifier": "trigger_github_workflow",
+  "title": "Trigger GitHub Workflow",
+  "icon": "Github",
+  "description": "Triggers a GitHub workflow in the repository",
+  "trigger": {
+    "type": "self-service",
+    "operation": "CREATE",
+    "userInputs": {
+      "properties": {
+        "workflow_name": {
+          "icon": "DefaultProperty",
+          "title": "Workflow Name",
+          "type": "string"
+        }
+      },
+      "required": ["workflow_name"],
+      "order": ["workflow_name"]
+    },
+    "blueprintIdentifier": "triggerworkflow"
+  },
+  "invocationMethod": {
+    "type": "GITHUB",
+    "org": "<GITHUB_ORG_NAME>",
+    "repo": "<GITHUB_REPO_NAME>",
+    "workflow": "{{ .inputs.\"workflow_name\" }}",
+    "reportWorkflowStatus": true
+  },
+  "requiredApproval": false
+}
