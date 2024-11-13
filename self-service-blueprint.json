@@ -6,11 +6,11 @@
     "properties": {
       "workflow_name": {
         "icon": "Github",
-        "title": "Workflow Name",
+        "title": "Trigger playlist workflow",
         "type": "string",
-        "description": "The name of the workflow to trigger"
+        "description": "Self service to trigger playlist workflow"
       }
     },
-    "required": ["workflow_name"]
+    "required": ["self-service.yml"]
   }
 }
