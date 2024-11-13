@@ -4,7 +4,7 @@
   "icon": "Github",
   "schema": {
     "properties": {
-      "workflow_name": {
+      "self-service.yml": {
         "icon": "Github",
         "title": "Trigger playlist workflow",
         "type": "string",
