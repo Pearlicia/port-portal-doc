@@ -1,0 +1,107 @@
+name: Ingest YouTube Playlist Data to Port using API
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  fetch-and-ingest:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v2
+
+      - name: Install Dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y jq
+
+      - name: Fetch YouTube Playlist Video IDs
+        env:
+          YOUTUBE_API_KEY: ${{ secrets.YOUTUBE_API_KEY }}
+          PLAYLIST_ID: ${{ secrets.PLAYLIST_ID }}
+        run: |
+          # Fetch all video IDs in the playlist
+          NEXT_PAGE_TOKEN=""
+          > video_ids.json
+
+          while [[ "$NEXT_PAGE_TOKEN" != "null" ]]; do
+            RESPONSE=$(curl -s "https://www.googleapis.com/youtube/v3/playlistItems?part=contentDetails&playlistId=${PLAYLIST_ID}&key=${YOUTUBE_API_KEY}&maxResults=50&pageToken=${NEXT_PAGE_TOKEN}")
+            echo $RESPONSE | jq -c '.items[].contentDetails.videoId' >> video_ids.json
+            NEXT_PAGE_TOKEN=$(echo $RESPONSE | jq -r '.nextPageToken')
+          done
+
+      - name: Fetch Video Details and Comments
+        env:
+          YOUTUBE_API_KEY: ${{ secrets.YOUTUBE_API_KEY }}
+        run: |
+          > video_data.json
+
+          # Read each video ID from video_ids.json and fetch video details and comments
+          while read -r VIDEO_ID; do
+            # Fetch video details
+            VIDEO_RESPONSE=$(curl -s "https://www.googleapis.com/youtube/v3/videos?part=snippet,contentDetails,statistics&id=${VIDEO_ID}&key=${YOUTUBE_API_KEY}")
+            VIDEO_INFO=$(echo $VIDEO_RESPONSE | jq -c '.items[0]')
+
+            # Initialize comment storage
+            COMMENTS="[]"
+            NEXT_PAGE_TOKEN=""
+
+            # Fetch comments for the video
+            while [[ "$NEXT_PAGE_TOKEN" != "null" ]]; do
+              COMMENTS_RESPONSE=$(curl -s "https://www.googleapis.com/youtube/v3/commentThreads?part=snippet&videoId=${VIDEO_ID}&key=${YOUTUBE_API_KEY}&maxResults=50&pageToken=${NEXT_PAGE_TOKEN}")
+              NEW_COMMENTS=$(echo $COMMENTS_RESPONSE | jq -c '.items | map({author: .snippet.topLevelComment.snippet.authorDisplayName, text: .snippet.topLevelComment.snippet.textOriginal, likeCount: .snippet.topLevelComment.snippet.likeCount, publishedAt: .snippet.topLevelComment.snippet.publishedAt})')
+              COMMENTS=$(echo $COMMENTS | jq -c ". + $NEW_COMMENTS")
+              NEXT_PAGE_TOKEN=$(echo $COMMENTS_RESPONSE | jq -r '.nextPageToken // "null"')
+            done
+
+            # Combine video details and comments
+            echo $VIDEO_INFO | jq -c --argjson comments "$COMMENTS" '. + {comments: $comments}' >> video_data.json
+          done < video_ids.json
+
+      - name: Retrieve Port Access Token
+        env:
+          CLIENT_ID: ${{ secrets.PORT_CLIENT_ID }}
+          CLIENT_SECRET: ${{ secrets.PORT_CLIENT_SECRET }}
+        run: |
+          access_token=$(curl --location --request POST 'https://api.getport.io/v1/auth/access_token' \
+            --header 'Content-Type: application/json' \
+            --data-raw '{
+              "clientId": "'"$CLIENT_ID"'",
+              "clientSecret": "'"$CLIENT_SECRET"'"
+            }' | jq '.accessToken' | sed 's/"//g')
+          echo "access_token=$access_token" >> $GITHUB_ENV
+
+      - name: Ingest Video Data to Port
+        env:
+          ACCESS_TOKEN: ${{ env.access_token }}
+          BLUEPRINT_ID: ${{ secrets.PORT_BLUEPRINT_ID }}
+        run: |
+          # Loop through each video entry in video_data.json and ingest to Port
+          while IFS= read -r video; do
+            video_payload=$(echo $video | jq -c '{
+              identifier: .id,
+              title: .snippet.title,
+              properties: {
+                id: .id,
+                title: .snippet.title,
+                description: .snippet.description,
+                channel_id: .snippet.channelId,
+                channel_title: .snippet.channelTitle,
+                published_at: .snippet.publishedAt,
+                view_count: .statistics.viewCount,
+                like_count: .statistics.likeCount,
+                comment_count: .statistics.commentCount,
+                duration: .contentDetails.duration,
+                comments: .comments
+              }
+            }')
+
+            curl --location --request POST "https://api.getport.io/v1/blueprints/${BLUEPRINT_ID}/entities?upsert=true" \
+              --header "Authorization: Bearer $ACCESS_TOKEN" \
+              --header "Content-Type: application/json" \
+              --data-raw "$video_payload"
+          done < video_data.json
