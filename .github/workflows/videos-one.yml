@@ -1,0 +1,103 @@
+name: YouTube Playlist to Port Ingestion
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+
+jobs:
+  ingest-playlist:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Install jq
+        run: sudo apt-get install -y jq
+
+      - name: Fetch and Ingest YouTube Playlist to Port
+        env:
+          PORT_CLIENT_ID: ${{ secrets.PORT_CLIENT_ID }}
+          PORT_CLIENT_SECRET: ${{ secrets.PORT_CLIENT_SECRET }}
+          YOUTUBE_API_KEY: ${{ secrets.YOUTUBE_API_KEY }}
+        run: |
+          # Set the playlist ID and blueprint ID
+          PLAYLIST_ID="PL-7fHWfrqQvEUgrFz5pE-NWd6-8ixbX8w"
+          blueprint_id="video"
+
+          # Step 1: Get Access Token for Port API
+          access_token=$(curl --location --request POST 'https://api.getport.io/v1/auth/access_token' \
+          --header 'Content-Type: application/json' \
+          --data-raw "{
+              \"clientId\": \"$PORT_CLIENT_ID\",
+              \"clientSecret\": \"$PORT_CLIENT_SECRET\"
+          }" | jq -r '.accessToken')
+
+          # Step 2: Fetch Playlist Videos from YouTube API
+          nextPageToken=""
+          while true; do
+              # Fetch videos in the playlist (one page at a time)
+              response=$(curl -s "https://www.googleapis.com/youtube/v3/playlistItems?part=snippet,contentDetails&playlistId=$PLAYLIST_ID&maxResults=50&pageToken=$nextPageToken&key=$YOUTUBE_API_KEY")
+
+              # Parse and iterate over each video
+              echo "$response" | jq -c '.items[]' | while read -r item; do
+                  video_id=$(echo "$item" | jq -r '.contentDetails.videoId')
+                  title=$(echo "$item" | jq -r '.snippet.title')
+                  description=$(echo "$item" | jq -r '.snippet.description')
+                  published_at=$(echo "$item" | jq -r '.contentDetails.videoPublishedAt')
+                  channel_id=$(echo "$item" | jq -r '.snippet.channelId')
+                  channel_title=$(echo "$item" | jq -r '.snippet.channelTitle')
+
+                  # Step 3: Fetch Additional Video Details
+                  video_details=$(curl -s "https://www.googleapis.com/youtube/v3/videos?part=statistics,contentDetails&id=$video_id&key=$YOUTUBE_API_KEY")
+                  duration=$(echo "$video_details" | jq -r '.items[0].contentDetails.duration')
+                  view_count=$(echo "$video_details" | jq -r '.items[0].statistics.viewCount')
+                  like_count=$(echo "$video_details" | jq -r '.items[0].statistics.likeCount')
+                  comment_count=$(echo "$video_details" | jq -r '.items[0].statistics.commentCount')
+
+                  # Prepare data for Port API ingestion
+                  data=$(jq -n --arg identifier "$video_id" \
+                                 --arg title "$title" \
+                                 --arg id "$video_id" \
+                                 --arg description "$description" \
+                                 --arg published_at "$published_at" \
+                                 --arg channel_id "$channel_id" \
+                                 --arg channel_title "$channel_title" \
+                                 --arg duration "$duration" \
+                                 --arg view_count "$view_count" \
+                                 --arg like_count "$like_count" \
+                                 --arg comment_count "$comment_count" \
+                                 '{
+                                     identifier: $identifier,
+                                     title: $title,
+                                     properties: {
+                                         id: $id,
+                                         description: $description,
+                                         title: $title,
+                                         published_at: $published_at,
+                                         channel_id: $channel_id,
+                                         channel_title: $channel_title,
+                                         duration: $duration,
+                                         view_count: $view_count,
+                                         like_count: $like_count,
+                                         comment_count: $comment_count
+                                     },
+                                     relations: {
+                                         playlist: "related_entity_identifier"
+                                     }
+                                 }')
+
+                  # Step 4: Ingest Data into Port
+                  curl --location --request POST "https://api.getport.io/v1/blueprints/${blueprint_id}/entities?upsert=true" \
+                  --header "Authorization: Bearer $access_token" \
+                  --header "Content-Type: application/json" \
+                  --data-raw "$data"
+
+                  echo "Uploaded video $title ($video_id) to Port."
+              done
+
+              # Check if there is another page of results
+              nextPageToken=$(echo "$response" | jq -r '.nextPageToken')
+              [ "$nextPageToken" == "null" ] && break
+          done
