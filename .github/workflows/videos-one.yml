@@ -84,7 +84,7 @@ jobs:
                                          comment_count: $comment_count
                                      },
                                      relations: {
-                                         playlist: "related_entity_identifier"
+                      
                                      }
                                  }')
 
