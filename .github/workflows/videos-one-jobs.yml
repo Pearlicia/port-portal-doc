@@ -2,6 +2,14 @@ name: YouTube Playlist to Port Ingestion
 
 on:
   workflow_dispatch:
+    inputs:
+      port_context:
+        required: true
+        description: Includes the entity identifier, and the action's run id
+      playlist_id:
+        required: true
+        description: The playlist id
+        type: string
 
 jobs:
   get-access-token:
