@@ -52,7 +52,7 @@ jobs:
         run: |
           # Set the playlist ID and blueprint ID
           PLAYLIST_ID= ${{ fromJson(inputs.port_context).playlist_id }}
-          blueprint_id="playlist"
+          # blueprint_id="playlist"
 
           # Initialize nextPageToken
           nextPageToken=""
