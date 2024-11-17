@@ -50,8 +50,9 @@ jobs:
 
       - name: Fetch and Upsert YouTube Playlist Data to Port
         run: |
-          # Set the playlist ID
+          # Set the playlist ID and blueprint ID
           PLAYLIST_ID= ${{ fromJson(inputs.port_context).playlist_id }}
+          blueprint_id= ${{ fromJson(inputs.port_context).blueprint_id }}
 
           # Initialize nextPageToken
           nextPageToken=""
