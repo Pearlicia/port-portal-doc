@@ -1,8 +1,8 @@
 name: YouTube Playlist to Port Ingestion
 
 on:
-  push:
-    branches: [main]
+  #push:
+    #branches: [main]
   workflow_dispatch:
     inputs:
       port_context:
@@ -120,8 +120,8 @@ jobs:
               done
 
               # Check if there is another page of results
-             # nextPageToken=$(echo "$response" | jq -r '.nextPageToken')
-             # [ "$nextPageToken" == "null" ] && break
+              nextPageToken=$(echo "$response" | jq -r '.nextPageToken')
+              [ "$nextPageToken" == "null" ] && break
           done
 
   report-status:
