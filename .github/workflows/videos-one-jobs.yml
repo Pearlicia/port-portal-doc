@@ -1,6 +1,8 @@
 name: YouTube Playlist to Port Ingestion
 
 on:
+  push:
+    branches: [main]
   workflow_dispatch:
     inputs:
       port_context:
@@ -51,8 +53,8 @@ jobs:
       - name: Fetch and Upsert YouTube Playlist Data to Port
         run: |
           # Set the playlist ID and blueprint ID
-          PLAYLIST_ID= ${{ fromJson(inputs.port_context).playlist_id }}
-          blueprint_id= ${{ fromJson(inputs.port_context).blueprint_id }}
+          PLAYLIST_ID="PL-7fHWfrqQvEUgrFz5pE-NWd6-8ixbX8w"
+          blueprint_id="playlist"
 
           # Initialize nextPageToken
           nextPageToken=""
