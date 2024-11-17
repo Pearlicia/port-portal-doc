@@ -31,7 +31,7 @@ jobs:
         run: |
           # Set the playlist ID and blueprint ID
           PLAYLIST_ID=${{ inputs.playlist_id }}
-          blueprint_id=${{ inputs.port_context.blueprint }}
+          blueprint_id=${{ fromJson(inputs.port_context).blueprint }}
 
           # Step 1: Get Access Token for Port API
           access_token=$(curl --location --request POST 'https://api.getport.io/v1/auth/access_token' \
