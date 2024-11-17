@@ -1,0 +1,164 @@
+name: YouTube Playlist to Port Ingestion
+
+on:
+  workflow_dispatch:
+    inputs:
+      port_context:
+        required: true
+        description: Includes the entity identifier, and the action's run id
+      playlist_id:
+        required: true
+        description: The playlist ID
+        type: string
+
+jobs:
+  get-access-token:
+    runs-on: ubuntu-latest
+    outputs:
+      access_token: ${{ steps.get-token.outputs.access_token }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Install jq
+        run: sudo apt-get install -y jq
+
+      - name: Get Access Token
+        id: get-token
+        env:
+          PORT_CLIENT_ID: ${{ secrets.PORT_CLIENT_ID }}
+          PORT_CLIENT_SECRET: ${{ secrets.PORT_CLIENT_SECRET }}
+        run: |
+          access_token=$(curl --silent --location --request POST 'https://api.getport.io/v1/auth/access_token' \
+          --header 'Content-Type: application/json' \
+          --data-raw "{
+              \"clientId\": \"$PORT_CLIENT_ID\",
+              \"clientSecret\": \"$PORT_CLIENT_SECRET\"
+          }" | jq -r '.accessToken')
+          if [ -z "$access_token" ]; then
+            echo "Failed to retrieve access token."
+            exit 1
+          fi
+          echo "::set-output name=access_token::$access_token"
+
+  upsert-playlist-data:
+    runs-on: ubuntu-latest
+    needs: get-access-token
+    env:
+      YOUTUBE_API_KEY: ${{ secrets.YOUTUBE_API_KEY }}
+      ACCESS_TOKEN: ${{ needs.get-access-token.outputs.access_token }}
+    steps:
+      - name: Install jq
+        run: sudo apt-get install -y jq
+
+      - name: Fetch and Upsert YouTube Playlist Data to Port
+        run: |
+          # Extract inputs
+          PLAYLIST_ID=${{ inputs.playlist_id }}
+          CONTEXT=${{ inputs.port_context }}
+          blueprint_id=$(echo "$CONTEXT" | jq -r '.blueprint_id')
+
+          if [ -z "$PLAYLIST_ID" ] || [ -z "$blueprint_id" ]; then
+              echo "Missing required inputs: playlist_id or blueprint_id."
+              exit 1
+          fi
+
+          # Initialize nextPageToken
+          nextPageToken=""
+
+          while true; do
+              # Fetch videos in the playlist (one page at a time)
+              response=$(curl --silent "https://www.googleapis.com/youtube/v3/playlistItems?part=snippet,contentDetails&playlistId=$PLAYLIST_ID&maxResults=50&pageToken=$nextPageToken&key=$YOUTUBE_API_KEY")
+
+              # Debug: Print the response
+              echo "API Response: $response"
+
+              # Validate response structure
+              if echo "$response" | jq -e '.items | length > 0' > /dev/null; then
+                  echo "$response" | jq -c '.items[]?' | while read -r item; do
+                      video_id=$(echo "$item" | jq -r '.contentDetails.videoId // empty')
+                      title=$(echo "$item" | jq -r '.snippet.title // "Untitled"')
+                      description=$(echo "$item" | jq -r '.snippet.description // "No description provided."')
+                      published_at=$(echo "$item" | jq -r '.contentDetails.videoPublishedAt // empty')
+                      channel_id=$(echo "$item" | jq -r '.snippet.channelId // empty')
+                      channel_title=$(echo "$item" | jq -r '.snippet.channelTitle // "Unknown Channel"')
+
+                      if [ -z "$video_id" ]; then
+                          echo "Skipping item with missing video ID."
+                          continue
+                      fi
+
+                      # Fetch Additional Video Details
+                      video_details=$(curl --silent "https://www.googleapis.com/youtube/v3/videos?part=statistics,contentDetails&id=$video_id&key=$YOUTUBE_API_KEY")
+                      duration=$(echo "$video_details" | jq -r '.items[0].contentDetails.duration // "PT0S"')
+                      view_count=$(echo "$video_details" | jq -r '.items[0].statistics.viewCount // "0"')
+                      like_count=$(echo "$video_details" | jq -r '.items[0].statistics.likeCount // "0"')
+                      comment_count=$(echo "$video_details" | jq -r '.items[0].statistics.commentCount // "0"')
+
+                      # Prepare data for Port API ingestion
+                      data=$(jq -n --arg identifier "$video_id" \
+                                     --arg title "$title" \
+                                     --arg id "$video_id" \
+                                     --arg description "$description" \
+                                     --arg published_at "$published_at" \
+                                     --arg channel_id "$channel_id" \
+                                     --arg channel_title "$channel_title" \
+                                     --arg duration "$duration" \
+                                     --arg view_count "$view_count" \
+                                     --arg like_count "$like_count" \
+                                     --arg comment_count "$comment_count" \
+                                     '{
+                                         identifier: $identifier,
+                                         title: $title,
+                                         properties: {
+                                             id: $id,
+                                             description: $description,
+                                             title: $title,
+                                             published_at: $published_at,
+                                             channel_id: $channel_id,
+                                             channel_title: $channel_title,
+                                             duration: $duration,
+                                             view_count: $view_count,
+                                             like_count: $like_count,
+                                             comment_count: $comment_count
+                                         },
+                                         relations: {
+                                             playlist: "related_entity_identifier"
+                                         }
+                                     }')
+
+                      # Ingest data into Port
+                      curl --silent --location --request POST "https://api.getport.io/v1/blueprints/${blueprint_id}/entities?upsert=true" \
+                      --header "Authorization: Bearer $ACCESS_TOKEN" \
+                      --header "Content-Type: application/json" \
+                      --data-raw "$data"
+
+                      echo "Uploaded video $title ($video_id) to Port."
+                  done
+              else
+                  echo "No videos found in the playlist or invalid API response."
+                  break
+              fi
+
+              # Check if there is another page of results
+              nextPageToken=$(echo "$response" | jq -r '.nextPageToken // empty')
+              [ -z "$nextPageToken" ] && break
+          done
+
+  report-status:
+    runs-on: ubuntu-latest
+    needs: upsert-playlist-data
+    steps:
+      - name: Report Status to Port
+        env:
+          ACCESS_TOKEN: ${{ needs.get-access-token.outputs.access_token }}
+        run: |
+          status="Playlist ingestion completed successfully"
+          curl --silent --location --request POST "https://api.getport.io/v1/status" \
+          --header "Authorization: Bearer $ACCESS_TOKEN" \
+          --header "Content-Type: application/json" \
+          --data-raw "{
+              \"status\": \"$status\",
+              \"description\": \"YouTube playlist ingestion job completed.\"
+          }"
+          echo "Reported status back to Port."
