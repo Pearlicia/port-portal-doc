@@ -8,6 +8,9 @@ on:
       port_context:
         required: true
         description: Includes the entity identifier, and the action's run id
+      blueprint:
+        required: true
+        description: "The blueprint from Port"
       playlist_id:
         required: true
         description: The playlist id
@@ -31,7 +34,7 @@ jobs:
         run: |
           # Set the playlist ID and blueprint ID
           PLAYLIST_ID=${{ inputs.playlist_id }}
-          blueprint_id=${{ fromJson(inputs.port_context).blueprint_id }}
+          blueprint_id=${{ inputs.blueprint }}
 
           # Step 1: Get Access Token for Port API
           access_token=$(curl --location --request POST 'https://api.getport.io/v1/auth/access_token' \
