@@ -1,7 +1,7 @@
 # YouTube Playlist & Videos Catalog in Port
 
 ## Introduction
-In this guide, I will demonstrate how Port can efficiently manage and visualize data from a YouTube playlist, helping you get insights at a glance. Port is a robust platform for modeling and cataloging diverse data types, and this guide will showcase its capabilities for managing video data.
+In this guide, I will demonstrate how Port can efficiently manage and visualize data from a YouTube playlist, helping you get insights at a glance. Port is a robust platform for modeling and cataloging diverse data types, and this guide will showcase its capabilities for managing video data. capability
 
 ## Why Use Port?
 Port offers a unique approach to data management: Not important
