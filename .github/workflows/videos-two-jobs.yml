@@ -16,6 +16,8 @@ on:
 jobs:
   get-access-token:
     runs-on: ubuntu-latest
+    outputs:
+      access_token: ${{ steps.get-token.outputs.access_token }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v2
@@ -41,8 +43,7 @@ jobs:
             exit 1
           fi
 
-          echo "ACCESS_TOKEN=$access_token" >> $GITHUB_ENV
-
+          echo "::set-output name=access_token::$access_token"
 
   upsert-playlist-data:
     runs-on: ubuntu-latest
@@ -54,6 +55,7 @@ jobs:
       - name: Fetch and Upsert YouTube Playlist Data to Port
         env:
           YOUTUBE_API_KEY: ${{ secrets.YOUTUBE_API_KEY }}
+          ACCESS_TOKEN: ${{ needs.get-access-token.outputs.access_token }}
         run: |
           if [ -z "$ACCESS_TOKEN" ]; then
             echo "ACCESS_TOKEN is not set. Exiting."
