@@ -1,8 +1,8 @@
 name: YouTube Playlist to Port Ingestion
 
 on:
-  #push:
-    #branches: [main]
+  push:
+    branches: [main]
   workflow_dispatch:
     inputs:
       port_context:
@@ -45,25 +45,33 @@ jobs:
     needs: get-access-token
     env:
       YOUTUBE_API_KEY: ${{ secrets.YOUTUBE_API_KEY }}
-      ACCESS_TOKEN: ${{ needs.get-access-token.outputs.access_token }}
     steps:
       - name: Install jq
         run: sudo apt-get install -y jq
 
       - name: Fetch and Upsert YouTube Playlist Data to Port
+        env:
+          ACCESS_TOKEN: ${{ needs.get-access-token.outputs.access_token }}
         run: |
+          # Validate ACCESS_TOKEN
+          if [ -z "$ACCESS_TOKEN" ]; then
+            echo "ACCESS_TOKEN is not set. Exiting."
+            exit 1
+          fi
+
           # Set the playlist ID and blueprint ID
           PLAYLIST_ID="PL-7fHWfrqQvEUgrFz5pE-NWd6-8ixbX8w"
           blueprint_id="playlist"
 
           # Initialize nextPageToken
           nextPageToken=""
+
           while true; do
               # Fetch videos in the playlist (one page at a time)
               response=$(curl -s "https://www.googleapis.com/youtube/v3/playlistItems?part=snippet,contentDetails&playlistId=$PLAYLIST_ID&maxResults=50&pageToken=$nextPageToken&key=$YOUTUBE_API_KEY")
 
               # Parse and iterate over each video
-              echo "$response" | jq -c '.items[]' | while read -r item; do
+              echo "$response" | jq -c '.items[]?' | while read -r item; do
                   video_id=$(echo "$item" | jq -r '.contentDetails.videoId')
                   title=$(echo "$item" | jq -r '.snippet.title')
                   description=$(echo "$item" | jq -r '.snippet.description')
@@ -120,8 +128,8 @@ jobs:
               done
 
               # Check if there is another page of results
-              nextPageToken=$(echo "$response" | jq -r '.nextPageToken')
-              [ "$nextPageToken" == "null" ] && break
+              nextPageToken=$(echo "$response" | jq -r '.nextPageToken // empty')
+              [ -z "$nextPageToken" ] && break
           done
 
   report-status:
@@ -131,8 +139,13 @@ jobs:
       - name: Report Status to Port
         env:
           ACCESS_TOKEN: ${{ needs.get-access-token.outputs.access_token }}
-          PERSONAL_ACCESS_TOKEN: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
         run: |
+          # Validate ACCESS_TOKEN
+          if [ -z "$ACCESS_TOKEN" ]; then
+            echo "ACCESS_TOKEN is not set. Exiting."
+            exit 1
+          fi
+
           status="Playlist ingestion completed successfully"
           curl --location --request POST "https://api.getport.io/v1/status" \
           --header "Authorization: Bearer $ACCESS_TOKEN" \
