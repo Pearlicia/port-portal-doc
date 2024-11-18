@@ -43,8 +43,6 @@ jobs:
 
           echo "ACCESS_TOKEN=$access_token" >> $GITHUB_ENV
 
-      - name: Debug Access Token
-        run: echo "Access token: $ACCESS_TOKEN"
 
   upsert-playlist-data:
     runs-on: ubuntu-latest
