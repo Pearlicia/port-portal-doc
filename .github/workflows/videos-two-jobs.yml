@@ -31,37 +31,27 @@ jobs:
           PORT_CLIENT_ID: ${{ secrets.PORT_CLIENT_ID }}
           PORT_CLIENT_SECRET: ${{ secrets.PORT_CLIENT_SECRET }}
         run: |
+          # Request access token
           access_token=$(curl --location --request POST 'https://api.getport.io/v1/auth/access_token' \
           --header 'Content-Type: application/json' \
           --data-raw "{
               \"clientId\": \"$PORT_CLIENT_ID\",
               \"clientSecret\": \"$PORT_CLIENT_SECRET\"
           }" | jq -r '.accessToken')
-
-          if [ -z "$access_token" ]; then
-            echo "Failed to retrieve access token. Exiting."
-            exit 1
-          fi
-
           echo "::set-output name=access_token::$access_token"
 
   upsert-playlist-data:
     runs-on: ubuntu-latest
     needs: get-access-token
+    env:
+      YOUTUBE_API_KEY: ${{ secrets.YOUTUBE_API_KEY }}
+      access_token: ${{ needs.get-access-token.outputs.access_token }}
     steps:
       - name: Install jq
         run: sudo apt-get install -y jq
 
       - name: Fetch and Upsert YouTube Playlist Data to Port
-        env:
-          YOUTUBE_API_KEY: ${{ secrets.YOUTUBE_API_KEY }}
-          ACCESS_TOKEN: ${{ needs.get-access-token.outputs.access_token }}
         run: |
-          if [ -z "$ACCESS_TOKEN" ]; then
-            echo "ACCESS_TOKEN is not set. Exiting."
-            exit 1
-          fi
-
           # Set the playlist ID and blueprint ID
           PLAYLIST_ID="PL-7fHWfrqQvEUgrFz5pE-NWd6-8ixbX8w"
           blueprint_id="playlist"
@@ -69,9 +59,11 @@ jobs:
           # Initialize nextPageToken
           nextPageToken=""
           while true; do
+              # Fetch videos in the playlist (one page at a time)
               response=$(curl -s "https://www.googleapis.com/youtube/v3/playlistItems?part=snippet,contentDetails&playlistId=$PLAYLIST_ID&maxResults=50&pageToken=$nextPageToken&key=$YOUTUBE_API_KEY")
 
-              echo "$response" | jq -c '.items[]?' | while read -r item; do
+              # Parse and iterate over each video
+              echo "$response" | jq -c '.items[]' | while read -r item; do
                   video_id=$(echo "$item" | jq -r '.contentDetails.videoId')
                   title=$(echo "$item" | jq -r '.snippet.title')
                   description=$(echo "$item" | jq -r '.snippet.description')
@@ -120,7 +112,7 @@ jobs:
 
                   # Ingest data into Port
                   curl --location --request POST "https://api.getport.io/v1/blueprints/${blueprint_id}/entities?upsert=true" \
-                  --header "Authorization: Bearer $ACCESS_TOKEN" \
+                  --header "Authorization: Bearer $access_token" \
                   --header "Content-Type: application/json" \
                   --data-raw "$data"
 
@@ -128,8 +120,8 @@ jobs:
               done
 
               # Check if there is another page of results
-              nextPageToken=$(echo "$response" | jq -r '.nextPageToken // empty')
-              [ -z "$nextPageToken" ] && break
+              nextPageToken=$(echo "$response" | jq -r '.nextPageToken')
+              [ "$nextPageToken" == "null" ] && break
           done
 
   report-status:
@@ -137,15 +129,13 @@ jobs:
     needs: upsert-playlist-data
     steps:
       - name: Report Status to Port
+        env:
+          access_token: ${{ needs.get-access-token.outputs.access_token }}
+          PERSONAL_ACCESS_TOKEN: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
         run: |
-          if [ -z "$ACCESS_TOKEN" ]; then
-            echo "ACCESS_TOKEN is not set. Exiting."
-            exit 1
-          fi
-
           status="Playlist ingestion completed successfully"
           curl --location --request POST "https://api.getport.io/v1/status" \
-          --header "Authorization: Bearer $ACCESS_TOKEN" \
+          --header "Authorization: Bearer $access_token" \
           --header "Content-Type: application/json" \
           --data-raw "{
               \"status\": \"$status\",
