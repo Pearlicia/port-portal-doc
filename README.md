@@ -4,7 +4,7 @@
 In this guide, I will demonstrate how Port can efficiently manage and visualize data from a YouTube playlist, helping you get insights at a glance. Port is a robust platform for modeling and cataloging diverse data types, and this guide will showcase its capabilities for managing video data.
 
 ## Why Use Port?
-Port offers a unique approach to data management:
+Port offers a unique approach to data management: Not important
 1. **Flexible Data Modeling**: With custom blueprints and properties, you can create a tailored structure to organize various types of data.
 2. **Data Ingestion with Automation**: Using GitHub workflows, you can automate the data import process, making it simple to keep your data updated.
 3. **Powerful Visualizations**: Port’s visualization tools help you identify patterns, trends, and metrics, making data-driven decisions easier.
