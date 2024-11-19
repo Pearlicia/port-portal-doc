@@ -22,6 +22,7 @@ jobs:
         run: sudo apt-get install -y jq
 
       - name: Fetch and Ingest YouTube Playlist to Port
+        id: fetch_and_ingest
         env:
           PORT_CLIENT_ID: ${{ secrets.PORT_CLIENT_ID }}
           PORT_CLIENT_SECRET: ${{ secrets.PORT_CLIENT_SECRET }}
@@ -32,8 +33,10 @@ jobs:
           blueprint_id=${{ fromJson(inputs.port_context).blueprint }}
           run_id=${{ fromJson(inputs.port_context).run_id }}
 
-          # Step 2: Fetch Playlist Videos from YouTube API
+          # Initialize variables
           nextPageToken=""
+          all_video_data=""
+
           while true; do
               # Fetch videos in the playlist (one page at a time)
               response=$(curl -s "https://www.googleapis.com/youtube/v3/playlistItems?part=snippet,contentDetails&playlistId=$PLAYLIST_ID&maxResults=50&pageToken=$nextPageToken&key=$YOUTUBE_API_KEY")
@@ -84,8 +87,8 @@ jobs:
                                      relations: {}
                                  }')
 
-                  # Store data in a temporary file for later use in the UPSERT step
-                  echo "$data" > video_data.json
+                  # Append the current video data to the all_video_data variable
+                  all_video_data="$all_video_data$data,"
               done
 
               # Check if there is another page of results
@@ -93,14 +96,17 @@ jobs:
               [ "$nextPageToken" == "null" ] && break
           done
 
+          # Remove trailing comma and set output
+          echo "::set-output name=video_data::[${all_video_data%,}]"
+
       - name: UPSERT Entity
         uses: port-labs/port-github-action@v1
         with:
-          identifier: ${{ fromJson(steps.fetch_and_ingest.outputs.response).identifier }}
-          title: ${{ fromJson(steps.fetch_and_ingest.outputs.response).title }}
+          identifier: ${{ fromJson(steps.fetch_and_ingest.outputs.video_data)[0].identifier }}
+          title: ${{ fromJson(steps.fetch_and_ingest.outputs.video_data)[0].title }}
           blueprint: ${{ fromJson(inputs.port_context).blueprint }}
           runId: ${{ fromJson(inputs.port_context).run_id }}
-          properties: ${{ steps.fetch_and_ingest.outputs.data.properties }}
+          properties: ${{ toJson(fromJson(steps.fetch_and_ingest.outputs.video_data)[0].properties) }}
           relations: "{}"
           clientId: ${{ secrets.PORT_CLIENT_ID }}
           clientSecret: ${{ secrets.PORT_CLIENT_SECRET }}
