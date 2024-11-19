@@ -21,12 +21,16 @@ jobs:
       - name: Install jq
         run: sudo apt-get install -y jq
 
-      - name: Fetch and Output YouTube Playlist Data
+      - name: Fetch and Ingest YouTube Playlist to Port
         id: fetch_videos
         env:
           YOUTUBE_API_KEY: ${{ secrets.YOUTUBE_API_KEY }}
         run: |
           PLAYLIST_ID=${{ inputs.playlist_id }}
+          OUTPUT_FILE="video_data.env"
+
+          # Initialize the environment file
+          echo "" > $OUTPUT_FILE
 
           sanitize() {
               echo "$1" | sed ':a;N;$!ba;s/\n/ /g' | sed 's/:/\\:/g'
@@ -50,44 +54,54 @@ jobs:
                   like_count=$(sanitize "$(echo "$video_details" | jq -r '.items[0].statistics.likeCount | tonumber')")
                   comment_count=$(sanitize "$(echo "$video_details" | jq -r '.items[0].statistics.commentCount | tonumber')")
 
-                  # Append the sanitized video details as GitHub Actions outputs
-                  echo "video_id_$video_id=$video_id" >> $GITHUB_OUTPUT
-                  echo "title_$video_id=$title" >> $GITHUB_OUTPUT
-                  echo "description_$video_id=$description" >> $GITHUB_OUTPUT
-                  echo "published_at_$video_id=$published_at" >> $GITHUB_OUTPUT
-                  echo "channel_id_$video_id=$channel_id" >> $GITHUB_OUTPUT
-                  echo "channel_title_$video_id=$channel_title" >> $GITHUB_OUTPUT
-                  echo "duration_$video_id=$duration" >> $GITHUB_OUTPUT
-                  echo "view_count_$video_id=$view_count" >> $GITHUB_OUTPUT
-                  echo "like_count_$video_id=$like_count" >> $GITHUB_OUTPUT
-                  echo "comment_count_$video_id=$comment_count" >> $GITHUB_OUTPUT
+                  # Append video data to environment file
+                  echo "video_id=$video_id" >> $OUTPUT_FILE
+                  echo "title=$title" >> $OUTPUT_FILE
+                  echo "description=$description" >> $OUTPUT_FILE
+                  echo "published_at=$published_at" >> $OUTPUT_FILE
+                  echo "channel_id=$channel_id" >> $OUTPUT_FILE
+                  echo "channel_title=$channel_title" >> $OUTPUT_FILE
+                  echo "duration=$duration" >> $OUTPUT_FILE
+                  echo "view_count=$view_count" >> $OUTPUT_FILE
+                  echo "like_count=$like_count" >> $OUTPUT_FILE
+                  echo "comment_count=$comment_count" >> $OUTPUT_FILE
               done
 
               nextPageToken=$(echo "$response" | jq -r '.nextPageToken')
               [ "$nextPageToken" == "null" ] && break
           done
 
-      - name: UPSERT playlist
+          # Export the environment file for the next steps
+          echo "VIDEO_DATA_ENV=$OUTPUT_FILE" >> $GITHUB_ENV
+
+      - name: Upsert Playlist Videos to Port
         uses: port-labs/port-github-action@v1
+        env:
+          VIDEO_DATA_ENV: ${{ env.VIDEO_DATA_ENV }}
         with:
-          identifier: "${{ steps.fetch_videos.outputs.video_id }}" # Replace SOME_VIDEO_ID with a specific video_id
-          title: "${{ steps.fetch_videos.outputs.title }}"
           blueprint: ${{ fromJson(inputs.port_context).blueprint }}
-          properties: |
-            {
-              "id": "${{ steps.fetch_videos.outputs.video_id }}",
-              "title": "${{ steps.fetch_videos.outputs.title }}",
-              "description": "${{ steps.fetch_videos.outputs.description }}",
-              "published_at": "${{ steps.fetch_videos.outputs.published_at }}",
-              "channel_id": "${{ steps.fetch_videos.outputs.channel_id }}",
-              "channel_title": "${{ steps.fetch_videos.outputs.channel_title }}",
-              "duration": "${{ steps.fetch_videos.outputs.duration }}",
-              "view_count": "${{ steps.fetch_videos.outputs.view_count }}",
-              "like_count": "${{ steps.fetch_videos.outputs.like_count }}",
-              "comment_count": "${{ steps.fetch_videos.outputs.comment_count }}"
-            }
           clientId: ${{ secrets.PORT_CLIENT_ID }}
           clientSecret: ${{ secrets.PORT_CLIENT_SECRET }}
           baseUrl: https://api.getport.io
           operation: UPSERT
           runId: ${{ fromJson(inputs.port_context).run_id }}
+          entities: |
+            [
+              {
+                "identifier": "${{ env.video_id }}",
+                "title": "${{ env.title }}",
+                "properties": {
+                  "id": "${{ env.video_id }}",
+                  "title": "${{ env.title }}",
+                  "description": "${{ env.description }}",
+                  "published_at": "${{ env.published_at }}",
+                  "channel_id": "${{ env.channel_id }}",
+                  "channel_title": "${{ env.channel_title }}",
+                  "duration": "${{ env.duration }}",
+                  "view_count": "${{ env.view_count }}",
+                  "like_count": "${{ env.like_count }}",
+                  "comment_count": "${{ env.comment_count }}"
+                },
+                "relations": {}
+              }
+            ]
