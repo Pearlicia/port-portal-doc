@@ -27,26 +27,30 @@ jobs:
           YOUTUBE_API_KEY: ${{ secrets.YOUTUBE_API_KEY }}
         run: |
           PLAYLIST_ID=${{ inputs.playlist_id }}
-          
+
+          sanitize() {
+              echo "$1" | sed ':a;N;$!ba;s/\n/ /g' | sed 's/:/\\:/g'
+          }
+
           nextPageToken=""
           while true; do
               response=$(curl -s "https://www.googleapis.com/youtube/v3/playlistItems?part=snippet,contentDetails&playlistId=$PLAYLIST_ID&maxResults=50&pageToken=$nextPageToken&key=$YOUTUBE_API_KEY")
               
               echo "$response" | jq -c '.items[]' | while read -r item; do
-                  video_id=$(echo "$item" | jq -r '.contentDetails.videoId')
-                  title=$(echo "$item" | jq -r '.snippet.title')
-                  description=$(echo "$item" | jq -r '.snippet.description')
-                  published_at=$(echo "$item" | jq -r '.contentDetails.videoPublishedAt')
-                  channel_id=$(echo "$item" | jq -r '.snippet.channelId')
-                  channel_title=$(echo "$item" | jq -r '.snippet.channelTitle')
+                  video_id=$(sanitize "$(echo "$item" | jq -r '.contentDetails.videoId')")
+                  title=$(sanitize "$(echo "$item" | jq -r '.snippet.title')")
+                  description=$(sanitize "$(echo "$item" | jq -r '.snippet.description')")
+                  published_at=$(sanitize "$(echo "$item" | jq -r '.contentDetails.videoPublishedAt')")
+                  channel_id=$(sanitize "$(echo "$item" | jq -r '.snippet.channelId')")
+                  channel_title=$(sanitize "$(echo "$item" | jq -r '.snippet.channelTitle')")
 
                   video_details=$(curl -s "https://www.googleapis.com/youtube/v3/videos?part=statistics,contentDetails&id=$video_id&key=$YOUTUBE_API_KEY")
-                  duration=$(echo "$video_details" | jq -r '.items[0].contentDetails.duration')
-                  view_count=$(echo "$video_details" | jq -r '.items[0].statistics.viewCount | tonumber')
-                  like_count=$(echo "$video_details" | jq -r '.items[0].statistics.likeCount | tonumber')
-                  comment_count=$(echo "$video_details" | jq -r '.items[0].statistics.commentCount | tonumber')
+                  duration=$(sanitize "$(echo "$video_details" | jq -r '.items[0].contentDetails.duration')")
+                  view_count=$(sanitize "$(echo "$video_details" | jq -r '.items[0].statistics.viewCount | tonumber')")
+                  like_count=$(sanitize "$(echo "$video_details" | jq -r '.items[0].statistics.likeCount | tonumber')")
+                  comment_count=$(sanitize "$(echo "$video_details" | jq -r '.items[0].statistics.commentCount | tonumber')")
 
-                  # Append the video details as GitHub Actions outputs
+                  # Append the sanitized video details as GitHub Actions outputs
                   echo "video_id_$video_id=$video_id" >> $GITHUB_OUTPUT
                   echo "title_$video_id=$title" >> $GITHUB_OUTPUT
                   echo "description_$video_id=$description" >> $GITHUB_OUTPUT
