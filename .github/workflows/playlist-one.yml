@@ -32,7 +32,7 @@ jobs:
           # Set the playlist ID and blueprint ID
           PLAYLIST_ID=${{ inputs.playlist_id }}
           blueprint_id=${{ fromJson(inputs.port_context).blueprint }}
-          run_id=${{ fromJson(inputs.port_context).run_id }}
+          run_id=${{ fromJson(inputs.port_context).run.id }}
 
           # Step 2: Fetch Playlist Videos from YouTube API
           nextPageToken=""
@@ -93,7 +93,7 @@ jobs:
                       identifier: "$video_id"
                       title: "$title"
                       blueprint: ${{ fromJson(inputs.port_context).blueprint }}
-                      runId: ${{ fromJson(inputs.port_context).run_id }}
+                      runId: ${{ fromJson(inputs.port_context).run.id }}
                       properties: |-
                         {
                           "id": "$video_id",
