@@ -90,6 +90,11 @@ jobs:
 
           echo "VIDEO_ENTITIES=$VIDEO_ENTITIES" >> $GITHUB_ENV
 
+      - name: Debug VIDEO_ENTITIES
+        run: |
+          echo "VIDEO_ENTITIES:"
+          echo "${{ env.VIDEO_ENTITIES }}" | jq '.'
+
       - name: Upsert Playlist Videos to Port
         uses: port-labs/port-github-action@v1
         env:
