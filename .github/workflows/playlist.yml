@@ -21,8 +21,11 @@ jobs:
           clientSecret: ${{ secrets.PORT_CLIENT_SECRET }}
           baseUrl: https://api.getport.io
           operation: PATCH_RUN
-          runId: ${{fromJson(inputs.port_context).run_id}}
+          runId: ${{ fromJson(inputs.port_context).run_id }}
           logMessage: "Starting to fetch YouTube playlist data..."
+
+      - name: Install jq
+        run: sudo apt-get update && sudo apt-get install -y jq
 
       - name: Fetch YouTube Playlist Items
         id: fetch_playlist_items
@@ -39,6 +42,11 @@ jobs:
               "maxResults": 50
             }
 
+      - name: Extract Video IDs
+        id: extract_video_ids
+        run: |
+          echo "video_ids=$(jq -r '.items[].contentDetails.videoId' <<< '${{ steps.fetch_playlist_items.outputs.response }}' | paste -sd ',' -)" >> $GITHUB_ENV
+
       - name: Fetch Video Statistics
         id: fetch_video_stats
         uses: fjogeleit/http-request-action@v1
@@ -49,7 +57,7 @@ jobs:
           query: |-
             {
               "part": "snippet,contentDetails,statistics",
-              "id": "${{ fromJson(steps.fetch_playlist_items.outputs.response).items.map(item => item.contentDetails.videoId).join(',') }}",
+              "id": "${{ env.video_ids }}",
               "key": "${{ secrets.YOUTUBE_API_KEY }}"
             }
 
@@ -61,7 +69,7 @@ jobs:
           clientSecret: ${{ secrets.PORT_CLIENT_SECRET }}
           baseUrl: https://api.getport.io
           operation: PATCH_RUN
-          runId: ${{fromJson(inputs.port_context).run_id}}
+          runId: ${{ fromJson(inputs.port_context).run_id }}
           logMessage: "Failed to fetch video data or statistics."
 
       - name: Ingest Playlist and Video Data
@@ -74,26 +82,20 @@ jobs:
           operation: UPSERT
           identifier: "${{ github.event.inputs.playlist_id }}"
           title: "${{ fromJson(steps.fetch_playlist_items.outputs.response).items[0].snippet.title }}"
-          blueprint: ${{fromJson(inputs.port_context).blueprint}}
+          blueprint: ${{ fromJson(inputs.port_context).blueprint }}
           properties: |-
             {
               "description": "${{ fromJson(steps.fetch_playlist_items.outputs.response).items[0].snippet.description }}",
               "channel_id": "${{ fromJson(steps.fetch_playlist_items.outputs.response).items[0].snippet.channelId }}",
               "channel_title": "${{ fromJson(steps.fetch_playlist_items.outputs.response).items[0].snippet.channelTitle }}",
               "published_at": "${{ fromJson(steps.fetch_playlist_items.outputs.response).items[0].snippet.publishedAt }}",
-              "view_count": ${{
-                fromJson(steps.fetch_video_stats.outputs.response).items[0].statistics.viewCount
-              }},
-              "like_count": ${{
-                fromJson(steps.fetch_video_stats.outputs.response).items[0].statistics.likeCount
-              }},
-              "comment_count": ${{
-                fromJson(steps.fetch_video_stats.outputs.response).items[0].statistics.commentCount
-              }},
+              "view_count": "${{ fromJson(steps.fetch_video_stats.outputs.response).items[0].statistics.viewCount }}",
+              "like_count": "${{ fromJson(steps.fetch_video_stats.outputs.response).items[0].statistics.likeCount }}",
+              "comment_count": "${{ fromJson(steps.fetch_video_stats.outputs.response).items[0].statistics.commentCount }}",
               "duration": "${{ fromJson(steps.fetch_video_stats.outputs.response).items[0].contentDetails.duration }}"
             }
           relations: "${{ toJson(fromJson(inputs.port_context).relations) }}"
-          runId: ${{fromJson(inputs.port_context).run_id}}
+          runId: ${{ fromJson(inputs.port_context).run_id }}
 
       - name: Log Ingestion Success
         if: success()
@@ -103,7 +105,7 @@ jobs:
           clientSecret: ${{ secrets.PORT_CLIENT_SECRET }}
           baseUrl: https://api.getport.io
           operation: PATCH_RUN
-          runId: ${{fromJson(inputs.port_context).run_id}}
+          runId: ${{ fromJson(inputs.port_context).run_id }}
           logMessage: "YouTube playlist data ingestion was successful ✅"
 
       - name: Log Ingestion Failure
@@ -114,5 +116,5 @@ jobs:
           clientSecret: ${{ secrets.PORT_CLIENT_SECRET }}
           baseUrl: https://api.getport.io
           operation: PATCH_RUN
-          runId: ${{fromJson(inputs.port_context).run_id}}
+          runId: ${{ fromJson(inputs.port_context).run_id }}
           logMessage: "Failed to ingest YouTube playlist data..."
