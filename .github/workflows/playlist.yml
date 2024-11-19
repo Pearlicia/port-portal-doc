@@ -34,6 +34,11 @@ jobs:
           # Initialize a temporary file for storing entities to upsert
           ENTITY_FILE=$(mktemp)
 
+          # Fetch playlist details (id and title)
+          playlist_details=$(curl -s "https://www.googleapis.com/youtube/v3/playlists?part=snippet&id=$PLAYLIST_ID&key=$YOUTUBE_API_KEY")
+          playlist_id=$(echo "$playlist_details" | jq -r '.items[0].id')
+          playlist_title=$(echo "$playlist_details" | jq -r '.items[0].snippet.title')
+
           # Fetch videos from the playlist and construct payloads
           nextPageToken=""
           while true; do
@@ -57,6 +62,8 @@ jobs:
                   # Add payload to the entity file
                   jq -n --arg identifier "$video_id" \
                            --arg title "$title" \
+                           --arg playlist_id "$playlist_id" \
+                           --arg playlist_title "$playlist_title" \
                            --arg blueprint "$blueprint_id" \
                            --arg runId "$run_id" \
                            --arg description "$description" \
@@ -73,6 +80,8 @@ jobs:
                                blueprint: $blueprint,
                                runId: $runId,
                                properties: {
+                                   playlist_id: $playlist_id,
+                                   playlist_title: $playlist_title,
                                    description: $description,
                                    channel_id: $channel_id,
                                    channel_title: $channel_title,
@@ -90,13 +99,28 @@ jobs:
               [ "$nextPageToken" == "null" ] && break
           done
 
-      - name: Ingest Playlist Data into Port
+      - name: UPSERT Playlist Data into Port
         uses: port-labs/port-github-action@v1
         with:
+          identifier: ${{ fromJson(steps.Fetch_YouTube_Playlist_Videos_and_Prepare_Data.outputs.response).video_id }}
+          title: ${{ fromJson(steps.Fetch_YouTube_Playlist_Videos_and_Prepare_Data.outputs.response).title }}
+          blueprint: ${{ fromJson(inputs.port_context).blueprint }}
+          runId: ${{ fromJson(inputs.port_context).runId }}
+          properties: |-
+            {
+              "playlist_id": "${{ fromJson(steps.Fetch_YouTube_Playlist_Videos_and_Prepare_Data.outputs.response).playlist_id }}",
+              "playlist_title": "${{ fromJson(steps.Fetch_YouTube_Playlist_Videos_and_Prepare_Data.outputs.response).playlist_title }}",
+              "description": "${{ fromJson(steps.Fetch_YouTube_Playlist_Videos_and_Prepare_Data.outputs.response).description }}",
+              "channel_id": "${{ fromJson(steps.Fetch_YouTube_Playlist_Videos_and_Prepare_Data.outputs.response).channel_id }}",
+              "channel_title": "${{ fromJson(steps.Fetch_YouTube_Playlist_Videos_and_Prepare_Data.outputs.response).channel_title }}",
+              "published_at": "${{ fromJson(steps.Fetch_YouTube_Playlist_Videos_and_Prepare_Data.outputs.response).published_at }}",
+              "view_count": ${{ fromJson(steps.Fetch_YouTube_Playlist_Videos_and_Prepare_Data.outputs.response).view_count }},
+              "like_count": ${{ fromJson(steps.Fetch_YouTube_Playlist_Videos_and_Prepare_Data.outputs.response).like_count }},
+              "comment_count": ${{ fromJson(steps.Fetch_YouTube_Playlist_Videos_and_Prepare_Data.outputs.response).comment_count }},
+              "duration": "${{ fromJson(steps.Fetch_YouTube_Playlist_Videos_and_Prepare_Data.outputs.response).duration }}"
+            }
+          relations: "${{ toJson(fromJson(inputs.port_context).relations) }}"
           clientId: ${{ secrets.PORT_CLIENT_ID }}
           clientSecret: ${{ secrets.PORT_CLIENT_SECRET }}
           baseUrl: https://api.getport.io
           operation: UPSERT
-          blueprint: ${{ inputs.port_context | jq -r '.blueprint' }}  # Include blueprint from context
-          runId: ${{ inputs.port_context | jq -r '.runId' }}  # Include runId from context
-          file: $ENTITY_FILE
