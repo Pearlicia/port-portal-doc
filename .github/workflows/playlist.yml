@@ -12,17 +12,17 @@ on:
 
 jobs:
   fetch_and_ingest_playlist:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Start of Playlist Fetch
-        uses: port-labs/port-github-action@v1
-        with:
-          clientId: ${{ secrets.PORT_CLIENT_ID }}
-          clientSecret: ${{ secrets.PORT_CLIENT_SECRET }}
-          baseUrl: https://api.getport.io
-          operation: UPSERT
-          runId: ${{ fromJson(inputs.port_context).run.id }}
-          logMessage: "Starting to fetch YouTube playlist data..."
+     runs-on: ubuntu-latest
+     steps:
+    #   - name: Start of Playlist Fetch
+    #     uses: port-labs/port-github-action@v1
+    #     with:
+    #       clientId: ${{ secrets.PORT_CLIENT_ID }}
+    #       clientSecret: ${{ secrets.PORT_CLIENT_SECRET }}
+    #       baseUrl: https://api.getport.io
+    #       operation: UPSERT
+    #       runId: ${{ fromJson(inputs.port_context).run.id }}
+    #       logMessage: "Starting to fetch YouTube playlist data..."
 
       - name: Install jq
         run: sudo apt-get update && sudo apt-get install -y jq
@@ -97,24 +97,24 @@ jobs:
           relations: "${{ toJson(fromJson(inputs.port_context).relations) }}"
           runId: ${{ fromJson(inputs.port_context).run.id }}
 
-      - name: Log Ingestion Success
-        if: success()
-        uses: port-labs/port-github-action@v1
-        with:
-          clientId: ${{ secrets.PORT_CLIENT_ID }}
-          clientSecret: ${{ secrets.PORT_CLIENT_SECRET }}
-          baseUrl: https://api.getport.io
-          operation: UPSERT
-          runId: ${{ fromJson(inputs.port_context).run.id }}
-          logMessage: "YouTube playlist data ingestion was successful ✅"
+      # - name: Log Ingestion Success
+      #   if: success()
+      #   uses: port-labs/port-github-action@v1
+      #   with:
+      #     clientId: ${{ secrets.PORT_CLIENT_ID }}
+      #     clientSecret: ${{ secrets.PORT_CLIENT_SECRET }}
+      #     baseUrl: https://api.getport.io
+      #     operation: UPSERT
+      #     runId: ${{ fromJson(inputs.port_context).run.id }}
+      #     logMessage: "YouTube playlist data ingestion was successful ✅"
 
-      - name: Ingestion Failure
-        if: failure()
-        uses: port-labs/port-github-action@v1
-        with:
-          clientId: ${{ secrets.PORT_CLIENT_ID }}
-          clientSecret: ${{ secrets.PORT_CLIENT_SECRET }}
-          baseUrl: https://api.getport.io
-          operation: UPSERT
-          runId: ${{ fromJson(inputs.port_context).run.id }}
-          logMessage: "Failed to ingest YouTube playlist data..."
+      # - name: Ingestion Failure
+      #   if: failure()
+      #   uses: port-labs/port-github-action@v1
+      #   with:
+      #     clientId: ${{ secrets.PORT_CLIENT_ID }}
+      #     clientSecret: ${{ secrets.PORT_CLIENT_SECRET }}
+      #     baseUrl: https://api.getport.io
+      #     operation: UPSERT
+      #     runId: ${{ fromJson(inputs.port_context).run.id }}
+      #     logMessage: "Failed to ingest YouTube playlist data..."
