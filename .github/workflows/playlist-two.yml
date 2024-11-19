@@ -55,37 +55,40 @@ jobs:
                   like_count=$(echo "$video_details" | jq -r '.items[0].statistics.likeCount | tonumber')
                   comment_count=$(echo "$video_details" | jq -r '.items[0].statistics.commentCount | tonumber')
 
-                  # Prepare video data in JSON format
-                  video_data=$(jq -n --arg identifier "$video_id" \
-                                 --arg title "$title" \
-                                 --arg id "$video_id" \
-                                 --arg description "$description" \
-                                 --arg published_at "$published_at" \
-                                 --arg channel_id "$channel_id" \
-                                 --arg channel_title "$channel_title" \
-                                 --arg duration "$duration" \
-                                 --arg view_count "$view_count" \
-                                 --arg like_count "$like_count" \
-                                 --arg comment_count "$comment_count" \
-                                 '{
-                                     identifier: $identifier,
-                                     title: $title,
-                                     properties: {
-                                         id: $id,
-                                         description: $description,
-                                         title: $title,
-                                         published_at: $published_at,
-                                         channel_id: $channel_id,
-                                         channel_title: $channel_title,
-                                         duration: $duration,
-                                         view_count: $view_count,
-                                         like_count: $like_count,
-                                         comment_count: $comment_count
-                                     },
-                                     relations: {}
-                                 }')
+                  # Reformat published_at to ISO 8601 format (YYYY-MM-DDTHH:MM:SSZ)
+                  formatted_published_at=$(date -d "$published_at" --utc +%Y-%m-%dT%H:%M:%SZ)
 
-                  # Append the video data to the array
+                  # Prepare data for Port API ingestion
+                  video_data=$(jq -n --arg identifier "$video_id" \
+                                     --arg title "$title" \
+                                     --arg id "$video_id" \
+                                     --arg description "$description" \
+                                     --arg published_at "$formatted_published_at" \
+                                     --arg channel_id "$channel_id" \
+                                     --arg channel_title "$channel_title" \
+                                     --arg duration "$duration" \
+                                     --arg view_count "$view_count" \
+                                     --arg like_count "$like_count" \
+                                     --arg comment_count "$comment_count" \
+                                     '{
+                                         identifier: $identifier,
+                                         title: $title,
+                                         properties: {
+                                             id: $id,
+                                             description: $description,
+                                             title: $title,
+                                             published_at: $published_at,
+                                             channel_id: $channel_id,
+                                             channel_title: $channel_title,
+                                             duration: $duration,
+                                             view_count: $view_count,
+                                             like_count: $like_count,
+                                             comment_count: $comment_count
+                                         },
+                                         relations: {}
+                                     }')
+
+                  # Add the video data to the list of videos
                   videos_data=$(echo "$videos_data" | jq ". += [$video_data]")
               done
 
@@ -94,28 +97,29 @@ jobs:
               [ "$nextPageToken" == "null" ] && break
           done
 
-          # Set the output to the new format
-          echo "videos_data=$videos_data" >> $GITHUB_OUTPUT
+          # Save the gathered data for later steps
+          echo "videos_data=$videos_data" >> $GITHUB_ENV
 
       - name: UPSERT playlist
         uses: port-labs/port-github-action@v1
         with:
-          identifier: "${{ fromJson(steps.fetch_videos.outputs.videos_data)[0].identifier }}"
-          title: "${{ fromJson(steps.fetch_videos.outputs.videos_data)[0].title }}"
+          identifier: "${{ fromJson(env.videos_data)[0].identifier }}"
+          title: "${{ fromJson(env.videos_data)[0].title }}"
           blueprint: ${{ fromJson(inputs.port_context).blueprint }}
-          properties: |
+          properties: |-
             {
-              "id": "${{ fromJson(steps.fetch_videos.outputs.videos_data)[0].properties.id }}",
-              "title": "${{ fromJson(steps.fetch_videos.outputs.videos_data)[0].properties.title }}",
-              "description": "${{ fromJson(steps.fetch_videos.outputs.videos_data)[0].properties.description }}",
-              "published_at": "${{ fromJson(steps.fetch_videos.outputs.videos_data)[0].properties.published_at }}",
-              "channel_id": "${{ fromJson(steps.fetch_videos.outputs.videos_data)[0].properties.channel_id }}",
-              "channel_title": "${{ fromJson(steps.fetch_videos.outputs.videos_data)[0].properties.channel_title }}",
-              "duration": "${{ fromJson(steps.fetch_videos.outputs.videos_data)[0].properties.duration }}",
-              "view_count": "${{ fromJson(steps.fetch_videos.outputs.videos_data)[0].properties.view_count }}",
-              "like_count": "${{ fromJson(steps.fetch_videos.outputs.videos_data)[0].properties.like_count }}",
-              "comment_count": "${{ fromJson(steps.fetch_videos.outputs.videos_data)[0].properties.comment_count }}"
+              "id": "${{ fromJson(env.videos_data)[0].properties.id }}",
+              "title": "${{ fromJson(env.videos_data)[0].properties.title }}",
+              "description": "${{ fromJson(env.videos_data)[0].properties.description }}",
+              "published_at": "${{ fromJson(env.videos_data)[0].properties.published_at }}",
+              "channel_id": "${{ fromJson(env.videos_data)[0].properties.channel_id }}",
+              "channel_title": "${{ fromJson(env.videos_data)[0].properties.channel_title }}",
+              "duration": "${{ fromJson(env.videos_data)[0].properties.duration }}",
+              "view_count": "${{ fromJson(env.videos_data)[0].properties.view_count }}",
+              "like_count": "${{ fromJson(env.videos_data)[0].properties.like_count }}",
+              "comment_count": "${{ fromJson(env.videos_data)[0].properties.comment_count }}"
             }
+          relations: "{}"
           clientId: ${{ secrets.PORT_CLIENT_ID }}
           clientSecret: ${{ secrets.PORT_CLIENT_SECRET }}
           baseUrl: https://api.getport.io
