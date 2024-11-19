@@ -1,0 +1,89 @@
+name: YouTube Playlist to Port Ingestion
+
+on:
+  workflow_dispatch:
+    inputs:
+      port_context:
+        required: true
+        description: Includes the blueprint identifier and the action's run id
+      playlist_id:
+        required: true
+        description: The playlist ID
+        type: string
+
+jobs:
+  ingest-playlist:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Install jq
+        run: sudo apt-get install -y jq
+
+      - name: Fetch and Output YouTube Playlist Data
+        id: fetch_videos
+        env:
+          YOUTUBE_API_KEY: ${{ secrets.YOUTUBE_API_KEY }}
+        run: |
+          PLAYLIST_ID=${{ inputs.playlist_id }}
+          
+          nextPageToken=""
+          while true; do
+              response=$(curl -s "https://www.googleapis.com/youtube/v3/playlistItems?part=snippet,contentDetails&playlistId=$PLAYLIST_ID&maxResults=50&pageToken=$nextPageToken&key=$YOUTUBE_API_KEY")
+              
+              echo "$response" | jq -c '.items[]' | while read -r item; do
+                  video_id=$(echo "$item" | jq -r '.contentDetails.videoId')
+                  title=$(echo "$item" | jq -r '.snippet.title')
+                  description=$(echo "$item" | jq -r '.snippet.description')
+                  published_at=$(echo "$item" | jq -r '.contentDetails.videoPublishedAt')
+                  channel_id=$(echo "$item" | jq -r '.snippet.channelId')
+                  channel_title=$(echo "$item" | jq -r '.snippet.channelTitle')
+
+                  video_details=$(curl -s "https://www.googleapis.com/youtube/v3/videos?part=statistics,contentDetails&id=$video_id&key=$YOUTUBE_API_KEY")
+                  duration=$(echo "$video_details" | jq -r '.items[0].contentDetails.duration')
+                  view_count=$(echo "$video_details" | jq -r '.items[0].statistics.viewCount | tonumber')
+                  like_count=$(echo "$video_details" | jq -r '.items[0].statistics.likeCount | tonumber')
+                  comment_count=$(echo "$video_details" | jq -r '.items[0].statistics.commentCount | tonumber')
+
+                  # Append the video details as GitHub Actions outputs
+                  echo "video_id_$video_id=$video_id" >> $GITHUB_OUTPUT
+                  echo "title_$video_id=$title" >> $GITHUB_OUTPUT
+                  echo "description_$video_id=$description" >> $GITHUB_OUTPUT
+                  echo "published_at_$video_id=$published_at" >> $GITHUB_OUTPUT
+                  echo "channel_id_$video_id=$channel_id" >> $GITHUB_OUTPUT
+                  echo "channel_title_$video_id=$channel_title" >> $GITHUB_OUTPUT
+                  echo "duration_$video_id=$duration" >> $GITHUB_OUTPUT
+                  echo "view_count_$video_id=$view_count" >> $GITHUB_OUTPUT
+                  echo "like_count_$video_id=$like_count" >> $GITHUB_OUTPUT
+                  echo "comment_count_$video_id=$comment_count" >> $GITHUB_OUTPUT
+              done
+
+              nextPageToken=$(echo "$response" | jq -r '.nextPageToken')
+              [ "$nextPageToken" == "null" ] && break
+          done
+
+      - name: UPSERT playlist
+        uses: port-labs/port-github-action@v1
+        with:
+          identifier: "${{ steps.fetch_videos.outputs.video_id_SOME_VIDEO_ID }}" # Replace SOME_VIDEO_ID with a specific video_id
+          title: "${{ steps.fetch_videos.outputs.title_SOME_VIDEO_ID }}"
+          blueprint: ${{ fromJson(inputs.port_context).blueprint }}
+          properties: |
+            {
+              "id": "${{ steps.fetch_videos.outputs.video_id }}",
+              "title": "${{ steps.fetch_videos.outputs.title }}",
+              "description": "${{ steps.fetch_videos.outputs.description }}",
+              "published_at": "${{ steps.fetch_videos.outputs.published_at }}",
+              "channel_id": "${{ steps.fetch_videos.outputs.channel_id }}",
+              "channel_title": "${{ steps.fetch_videos.outputs.channel_title }}",
+              "duration": "${{ steps.fetch_videos.outputs.duration }}",
+              "view_count": "${{ steps.fetch_videos.outputs.view_count }}",
+              "like_count": "${{ steps.fetch_videos.outputs.like_count }}",
+              "comment_count": "${{ steps.fetch_videos.outputs.comment_count }}"
+            }
+          clientId: ${{ secrets.PORT_CLIENT_ID }}
+          clientSecret: ${{ secrets.PORT_CLIENT_SECRET }}
+          baseUrl: https://api.getport.io
+          operation: UPSERT
+          runId: ${{ fromJson(inputs.port_context).run_id }}
