@@ -5,7 +5,7 @@ on:
     inputs:
       port_context:
         required: true
-        description: Includes the blueprint identifier and the action's run id
+        description: Includes the blueprint identifier and the action's run ID
       playlist_id:
         required: true
         description: The playlist ID
@@ -21,16 +21,13 @@ jobs:
       - name: Install jq
         run: sudo apt-get install -y jq
 
-      - name: Fetch and Ingest YouTube Playlist to Port
+      - name: Fetch and Process YouTube Playlist
         id: fetch_videos
         env:
           YOUTUBE_API_KEY: ${{ secrets.YOUTUBE_API_KEY }}
         run: |
           PLAYLIST_ID=${{ inputs.playlist_id }}
-          OUTPUT_FILE="video_data.env"
-
-          # Initialize the environment file
-          echo "" > $OUTPUT_FILE
+          VIDEO_ENTITIES=[]
 
           sanitize() {
               echo "$1" | sed ':a;N;$!ba;s/\n/ /g' | sed 's/:/\\:/g'
@@ -39,7 +36,7 @@ jobs:
           nextPageToken=""
           while true; do
               response=$(curl -s "https://www.googleapis.com/youtube/v3/playlistItems?part=snippet,contentDetails&playlistId=$PLAYLIST_ID&maxResults=50&pageToken=$nextPageToken&key=$YOUTUBE_API_KEY")
-              
+
               echo "$response" | jq -c '.items[]' | while read -r item; do
                   video_id=$(sanitize "$(echo "$item" | jq -r '.contentDetails.videoId')")
                   title=$(sanitize "$(echo "$item" | jq -r '.snippet.title')")
@@ -54,54 +51,54 @@ jobs:
                   like_count=$(sanitize "$(echo "$video_details" | jq -r '.items[0].statistics.likeCount | tonumber')")
                   comment_count=$(sanitize "$(echo "$video_details" | jq -r '.items[0].statistics.commentCount | tonumber')")
 
-                  # Append video data to environment file
-                  echo "video_id=$video_id" >> $OUTPUT_FILE
-                  echo "title=$title" >> $OUTPUT_FILE
-                  echo "description=$description" >> $OUTPUT_FILE
-                  echo "published_at=$published_at" >> $OUTPUT_FILE
-                  echo "channel_id=$channel_id" >> $OUTPUT_FILE
-                  echo "channel_title=$channel_title" >> $OUTPUT_FILE
-                  echo "duration=$duration" >> $OUTPUT_FILE
-                  echo "view_count=$view_count" >> $OUTPUT_FILE
-                  echo "like_count=$like_count" >> $OUTPUT_FILE
-                  echo "comment_count=$comment_count" >> $OUTPUT_FILE
+                  # Construct entity JSON for each video
+                  video_entity=$(jq -n --arg identifier "$video_id" \
+                                         --arg title "$title" \
+                                         --arg description "$description" \
+                                         --arg published_at "$published_at" \
+                                         --arg channel_id "$channel_id" \
+                                         --arg channel_title "$channel_title" \
+                                         --arg duration "$duration" \
+                                         --arg view_count "$view_count" \
+                                         --arg like_count "$like_count" \
+                                         --arg comment_count "$comment_count" \
+                                         '{
+                                             identifier: $identifier,
+                                             title: $title,
+                                             properties: {
+                                                 id: $identifier,
+                                                 title: $title,
+                                                 description: $description,
+                                                 published_at: $published_at,
+                                                 channel_id: $channel_id,
+                                                 channel_title: $channel_title,
+                                                 duration: $duration,
+                                                 view_count: $view_count,
+                                                 like_count: $like_count,
+                                                 comment_count: $comment_count
+                                             },
+                                             relations: {}
+                                         }')
+
+                  # Append each video entity to VIDEO_ENTITIES
+                  VIDEO_ENTITIES=$(echo "$VIDEO_ENTITIES" | jq ". + [$video_entity]")
               done
 
               nextPageToken=$(echo "$response" | jq -r '.nextPageToken')
               [ "$nextPageToken" == "null" ] && break
           done
 
-          # Export the environment file for the next steps
-          echo "VIDEO_DATA_ENV=$OUTPUT_FILE" >> $GITHUB_ENV
+          echo "VIDEO_ENTITIES=$VIDEO_ENTITIES" >> $GITHUB_ENV
 
       - name: Upsert Playlist Videos to Port
         uses: port-labs/port-github-action@v1
         env:
-          VIDEO_DATA_ENV: ${{ env.VIDEO_DATA_ENV }}
+          VIDEO_ENTITIES: ${{ env.VIDEO_ENTITIES }}
         with:
           blueprint: ${{ fromJson(inputs.port_context).blueprint }}
           clientId: ${{ secrets.PORT_CLIENT_ID }}
           clientSecret: ${{ secrets.PORT_CLIENT_SECRET }}
           baseUrl: https://api.getport.io
           operation: UPSERT
+          entities: ${{ env.VIDEO_ENTITIES }}
           runId: ${{ fromJson(inputs.port_context).run_id }}
-          entities: |
-            [
-              {
-                "identifier": "${{ env.video_id }}",
-                "title": "${{ env.title }}",
-                "properties": {
-                  "id": "${{ env.video_id }}",
-                  "title": "${{ env.title }}",
-                  "description": "${{ env.description }}",
-                  "published_at": "${{ env.published_at }}",
-                  "channel_id": "${{ env.channel_id }}",
-                  "channel_title": "${{ env.channel_title }}",
-                  "duration": "${{ env.duration }}",
-                  "view_count": "${{ env.view_count }}",
-                  "like_count": "${{ env.like_count }}",
-                  "comment_count": "${{ env.comment_count }}"
-                },
-                "relations": {}
-              }
-            ]
