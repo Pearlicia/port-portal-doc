@@ -1,0 +1,118 @@
+name: Fetch and Ingest YouTube Playlist
+on:
+  workflow_dispatch:
+    inputs:
+      playlist_id:
+        description: The ID of the YouTube playlist to fetch.
+        required: true
+        type: string
+      port_context:
+        required: true
+        description: Includes blueprint, run ID, and entity identifier from Port.
+
+jobs:
+  fetch_and_ingest_playlist:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Log Start of Playlist Fetch
+        uses: port-labs/port-github-action@v1
+        with:
+          clientId: ${{ secrets.PORT_CLIENT_ID }}
+          clientSecret: ${{ secrets.PORT_CLIENT_SECRET }}
+          baseUrl: https://api.getport.io
+          operation: PATCH_RUN
+          runId: ${{fromJson(inputs.port_context).run_id}}
+          logMessage: "Starting to fetch YouTube playlist data..."
+
+      - name: Fetch YouTube Playlist Items
+        id: fetch_playlist_items
+        uses: fjogeleit/http-request-action@v1
+        with:
+          url: 'https://www.googleapis.com/youtube/v3/playlistItems'
+          method: 'GET'
+          customHeaders: '{"Accept": "application/json"}'
+          query: |-
+            {
+              "part": "snippet,contentDetails",
+              "playlistId": "${{ github.event.inputs.playlist_id }}",
+              "key": "${{ secrets.YOUTUBE_API_KEY }}",
+              "maxResults": 50
+            }
+
+      - name: Fetch Video Statistics
+        id: fetch_video_stats
+        uses: fjogeleit/http-request-action@v1
+        with:
+          url: 'https://www.googleapis.com/youtube/v3/videos'
+          method: 'GET'
+          customHeaders: '{"Accept": "application/json"}'
+          query: |-
+            {
+              "part": "snippet,contentDetails,statistics",
+              "id": "${{ fromJson(steps.fetch_playlist_items.outputs.response).items.map(item => item.contentDetails.videoId).join(',') }}",
+              "key": "${{ secrets.YOUTUBE_API_KEY }}"
+            }
+
+      - name: Log Fetch Failure
+        if: failure()
+        uses: port-labs/port-github-action@v1
+        with:
+          clientId: ${{ secrets.PORT_CLIENT_ID }}
+          clientSecret: ${{ secrets.PORT_CLIENT_SECRET }}
+          baseUrl: https://api.getport.io
+          operation: PATCH_RUN
+          runId: ${{fromJson(inputs.port_context).run_id}}
+          logMessage: "Failed to fetch video data or statistics."
+
+      - name: Ingest Playlist and Video Data
+        if: success()
+        uses: port-labs/port-github-action@v1
+        with:
+          clientId: ${{ secrets.PORT_CLIENT_ID }}
+          clientSecret: ${{ secrets.PORT_CLIENT_SECRET }}
+          baseUrl: https://api.getport.io
+          operation: UPSERT
+          identifier: "${{ github.event.inputs.playlist_id }}"
+          title: "${{ fromJson(steps.fetch_playlist_items.outputs.response).items[0].snippet.title }}"
+          blueprint: ${{fromJson(inputs.port_context).blueprint}}
+          properties: |-
+            {
+              "description": "${{ fromJson(steps.fetch_playlist_items.outputs.response).items[0].snippet.description }}",
+              "channel_id": "${{ fromJson(steps.fetch_playlist_items.outputs.response).items[0].snippet.channelId }}",
+              "channel_title": "${{ fromJson(steps.fetch_playlist_items.outputs.response).items[0].snippet.channelTitle }}",
+              "published_at": "${{ fromJson(steps.fetch_playlist_items.outputs.response).items[0].snippet.publishedAt }}",
+              "view_count": ${{
+                fromJson(steps.fetch_video_stats.outputs.response).items[0].statistics.viewCount
+              }},
+              "like_count": ${{
+                fromJson(steps.fetch_video_stats.outputs.response).items[0].statistics.likeCount
+              }},
+              "comment_count": ${{
+                fromJson(steps.fetch_video_stats.outputs.response).items[0].statistics.commentCount
+              }},
+              "duration": "${{ fromJson(steps.fetch_video_stats.outputs.response).items[0].contentDetails.duration }}"
+            }
+          relations: "${{ toJson(fromJson(inputs.port_context).relations) }}"
+          runId: ${{fromJson(inputs.port_context).run_id}}
+
+      - name: Log Ingestion Success
+        if: success()
+        uses: port-labs/port-github-action@v1
+        with:
+          clientId: ${{ secrets.PORT_CLIENT_ID }}
+          clientSecret: ${{ secrets.PORT_CLIENT_SECRET }}
+          baseUrl: https://api.getport.io
+          operation: PATCH_RUN
+          runId: ${{fromJson(inputs.port_context).run_id}}
+          logMessage: "YouTube playlist data ingestion was successful ✅"
+
+      - name: Log Ingestion Failure
+        if: failure()
+        uses: port-labs/port-github-action@v1
+        with:
+          clientId: ${{ secrets.PORT_CLIENT_ID }}
+          clientSecret: ${{ secrets.PORT_CLIENT_SECRET }}
+          baseUrl: https://api.getport.io
+          operation: PATCH_RUN
+          runId: ${{fromJson(inputs.port_context).run_id}}
+          logMessage: "Failed to ingest YouTube playlist data..."
