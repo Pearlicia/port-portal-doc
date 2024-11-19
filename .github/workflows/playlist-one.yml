@@ -1,8 +1,6 @@
 name: YouTube Playlist to Port Ingestion
 
 on:
-  #push:
-    #branches: [main]
   workflow_dispatch:
     inputs:
       port_context:
@@ -32,7 +30,7 @@ jobs:
           # Set the playlist ID and blueprint ID
           PLAYLIST_ID=${{ inputs.playlist_id }}
           blueprint_id=${{ fromJson(inputs.port_context).blueprint }}
-          run_id=${{ fromJson(inputs.port_context).run.id }}
+          run_id=${{ fromJson(inputs.port_context).run_id }}
 
           # Step 2: Fetch Playlist Videos from YouTube API
           nextPageToken=""
@@ -86,37 +84,25 @@ jobs:
                                      relations: {}
                                  }')
 
-                  # Step 4: Ingest Data into Port using Port Labs GitHub Action
-                  - name: UPSERT Entity
-                    uses: port-labs/port-github-action@v1
-                    with:
-                      identifier: "$video_id"
-                      title: "$title"
-                      blueprint: ${{ fromJson(inputs.port_context).blueprint }}
-                      runId: ${{ fromJson(inputs.port_context).run.id }}
-                      properties: |-
-                        {
-                          "id": "$video_id",
-                          "description": "$description",
-                          "title": "$title",
-                          "published_at": "$published_at",
-                          "channel_id": "$channel_id",
-                          "channel_title": "$channel_title",
-                          "duration": "$duration",
-                          "view_count": $view_count,
-                          "like_count": $like_count,
-                          "comment_count": $comment_count
-                        }
-                      relations: "{}"
-                      clientId: ${{ secrets.PORT_CLIENT_ID }}
-                      clientSecret: ${{ secrets.PORT_CLIENT_SECRET }}
-                      baseUrl: https://api.getport.io
-                      operation: UPSERT
-
-                  echo "Uploaded video $title ($video_id) to Port."
+                  # Store data in a temporary file for later use in the UPSERT step
+                  echo "$data" > video_data.json
               done
 
               # Check if there is another page of results
               nextPageToken=$(echo "$response" | jq -r '.nextPageToken')
               [ "$nextPageToken" == "null" ] && break
           done
+
+      - name: UPSERT Entity
+        uses: port-labs/port-github-action@v1
+        with:
+          identifier: ${{ fromJson(steps.fetch_and_ingest.outputs.response).identifier }}
+          title: ${{ fromJson(steps.fetch_and_ingest.outputs.response).title }}
+          blueprint: ${{ fromJson(inputs.port_context).blueprint }}
+          runId: ${{ fromJson(inputs.port_context).run_id }}
+          properties: ${{ steps.fetch_and_ingest.outputs.data.properties }}
+          relations: "{}"
+          clientId: ${{ secrets.PORT_CLIENT_ID }}
+          clientSecret: ${{ secrets.PORT_CLIENT_SECRET }}
+          baseUrl: https://api.getport.io
+          operation: UPSERT
