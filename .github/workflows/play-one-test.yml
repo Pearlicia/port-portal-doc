@@ -70,8 +70,8 @@ jobs:
       - name: UPSERT playlist
         uses: port-labs/port-github-action@v1
         with:
-          identifier: "${{ steps.fetch_videos.outputs.video_id_SOME_VIDEO_ID }}" # Replace SOME_VIDEO_ID with a specific video_id
-          title: "${{ steps.fetch_videos.outputs.title_SOME_VIDEO_ID }}"
+          identifier: "${{ steps.fetch_videos.outputs.video_id }}" # Replace SOME_VIDEO_ID with a specific video_id
+          title: "${{ steps.fetch_videos.outputs.title }}"
           blueprint: ${{ fromJson(inputs.port_context).blueprint }}
           properties: |
             {
