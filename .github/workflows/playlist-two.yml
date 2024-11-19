@@ -44,7 +44,7 @@ jobs:
                   video_id=$(echo "$item" | jq -r '.contentDetails.videoId')
                   title=$(echo "$item" | jq -r '.snippet.title')
                   description=$(echo "$item" | jq -r '.snippet.description')
-                  published_at=$(echo "$item" | jq -r '.contentDetails.videoPublishedAt | todatetime')
+                  published_at=$(echo "$item" | jq -r '.contentDetails.videoPublishedAt')
                   channel_id=$(echo "$item" | jq -r '.snippet.channelId')
                   channel_title=$(echo "$item" | jq -r '.snippet.channelTitle')
 
