@@ -21,7 +21,7 @@ jobs:
           clientSecret: ${{ secrets.PORT_CLIENT_SECRET }}
           baseUrl: https://api.getport.io
           operation: PATCH_RUN
-          runId: ${{ fromJson(inputs.port_context).run_id }}
+          runId: ${{ fromJson(inputs.port_context).run.id }}
           logMessage: "Starting to fetch YouTube playlist data..."
 
       - name: Install jq
@@ -69,7 +69,7 @@ jobs:
           clientSecret: ${{ secrets.PORT_CLIENT_SECRET }}
           baseUrl: https://api.getport.io
           operation: PATCH_RUN
-          runId: ${{ fromJson(inputs.port_context).run_id }}
+          runId: ${{ fromJson(inputs.port_context).run.id }}
           logMessage: "Failed to fetch video data or statistics."
 
       - name: Ingest Playlist and Video Data
@@ -105,7 +105,7 @@ jobs:
           clientSecret: ${{ secrets.PORT_CLIENT_SECRET }}
           baseUrl: https://api.getport.io
           operation: PATCH_RUN
-          runId: ${{ fromJson(inputs.port_context).run_id }}
+          runId: ${{ fromJson(inputs.port_context).run.id }}
           logMessage: "YouTube playlist data ingestion was successful ✅"
 
       - name: Log Ingestion Failure
@@ -116,5 +116,5 @@ jobs:
           clientSecret: ${{ secrets.PORT_CLIENT_SECRET }}
           baseUrl: https://api.getport.io
           operation: PATCH_RUN
-          runId: ${{ fromJson(inputs.port_context).run_id }}
+          runId: ${{ fromJson(inputs.port_context).run.id }}
           logMessage: "Failed to ingest YouTube playlist data..."
