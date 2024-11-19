@@ -103,7 +103,7 @@ jobs:
           identifier: "${{ fromJson(steps.fetch_videos.outputs.videos_data).identifier }}"
           title: "${{ fromJson(steps.fetch_videos.outputs.videos_data).title }}"
           blueprint: ${{ fromJson(inputs.port_context).blueprint }}
-          properties: |
+          properties: |-
             {
               "id": "${{ fromJson(steps.fetch_videos.outputs.videos_data).id }}",
               "title": "${{ fromJson(steps.fetch_videos.outputs.videos_data).title }}",
