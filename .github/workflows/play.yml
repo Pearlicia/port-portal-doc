@@ -5,10 +5,10 @@ on:
     inputs:
       port_context:
         required: true
-        description: Includes the blueprint identifier and the action's run ID
+        description: Includes the blueprint identifier, and the action's run id
       playlist_id:
         required: true
-        description: The playlist ID
+        description: The playlist id
         type: string
 
 jobs:
@@ -86,30 +86,17 @@ jobs:
               [ "$nextPageToken" == "null" ] && break
           done
 
-          # Output the video data
+          # Set the output to the new format
           echo "videos_data=$videos_data" >> $GITHUB_OUTPUT
 
-      - name: Upsert Videos to Port
+      - name: UPSERT videos to Port
         uses: port-labs/port-github-action@v1
         with:
           clientId: ${{ secrets.PORT_CLIENT_ID }}
           clientSecret: ${{ secrets.PORT_CLIENT_SECRET }}
           baseUrl: https://api.getport.io
+          blueprint: ${{ fromJson(inputs.port_context).blueprint }}
           operation: UPSERT
-        env:
-          VIDEOS_DATA: ${{ steps.fetch_videos.outputs.videos_data }}
-        run: |
-          videos=$(echo "$VIDEOS_DATA" | jq -c '.[]')
-          for video in $videos; do
-              identifier=$(echo "$video" | jq -r '.identifier')
-              title=$(echo "$video" | jq -r '.title')
-              properties=$(echo "$video" | jq -c '.properties')
-
-              port-labs/port-github-action@v1 \
-                with: \
-                  identifier: "$identifier" \
-                  title: "$title" \
-                  blueprint: ${{ fromJson(inputs.port_context).blueprint }} \
-                  properties: "$properties" \
-                  runId: ${{ fromJson(inputs.port_context).run_id }}
-          done
+          runId: ${{ fromJson(inputs.port_context).run_id }}
+          properties: |-
+            ${{ steps.fetch_videos.outputs.videos_data | fromJson | toJson }}
