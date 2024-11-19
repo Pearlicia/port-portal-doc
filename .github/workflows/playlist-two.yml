@@ -100,21 +100,21 @@ jobs:
       - name: UPSERT playlist
         uses: port-labs/port-github-action@v1
         with:
-          identifier: "${{ fromJson(steps.fetch_videos.outputs.videos_data).identifier }}"
-          title: "${{ fromJson(steps.fetch_videos.outputs.videos_data).title }}"
+          identifier: "${{ fromJson(steps.fetch_videos.videos_data).identifier }}"
+          title: "${{ fromJson(steps.fetch_videos.videos_data).title }}"
           blueprint: ${{ fromJson(inputs.port_context).blueprint }}
           properties: |-
             {
-              "id": "${{ fromJson(steps.fetch_videos.outputs.videos_data).id }}",
-              "title": "${{ fromJson(steps.fetch_videos.outputs.videos_data).title }}",
-              "description": "${{ fromJson(steps.fetch_videos.outputs.videos_data).description }}",
-              "published_at": "${{ fromJson(steps.fetch_videos.outputs.videos_data).published_at }}",
-              "channel_id": "${{ fromJson(steps.fetch_videos.outputs.videos_data).channel_id }}",
-              "channel_title": "${{ fromJson(steps.fetch_videos.outputs.videos_data).channel_title }}",
-              "duration": "${{ fromJson(steps.fetch_videos.outputs.videos_data).duration }}",
-              "view_count": "${{ fromJson(steps.fetch_videos.outputs.videos_data).view_count }}",
-              "like_count": "${{ fromJson(steps.fetch_videos.outputs.videos_data).like_count }}",
-              "comment_count": "${{ fromJson(steps.fetch_videos.outputs.videos_data).comment_count }}"
+              "id": "${{ fromJson(steps.fetch_videos.videos_data).id }}",
+              "title": "${{ fromJson(steps.fetch_videos.videos_data).title }}",
+              "description": "${{ fromJson(steps.fetch_videos.videos_data).description }}",
+              "published_at": "${{ fromJson(steps.fetch_videos.videos_data).published_at }}",
+              "channel_id": "${{ fromJson(steps.fetch_videos.videos_data).channel_id }}",
+              "channel_title": "${{ fromJson(steps.fetch_videos.videos_data).channel_title }}",
+              "duration": "${{ fromJson(steps.fetch_videos.videos_data).duration }}",
+              "view_count": "${{ fromJson(steps.fetch_videos.videos_data).view_count }}",
+              "like_count": "${{ fromJson(steps.fetch_videos.videos_data).like_count }}",
+              "comment_count": "${{ fromJson(steps.fetch_videos.videos_data).comment_count }}"
             }
           #relations: "${{ toJson(fromJson(inputs.port_context).relations) }}"
           clientId: ${{ secrets.PORT_CLIENT_ID }}
