@@ -81,8 +81,10 @@ jobs:
                                      relations: {}
                                  }')
 
-                  # Echo the video data for subsequent steps
-                  echo "$video_data"
+                  # Check if video_data is valid JSON
+                  if [ -n "$video_data" ]; then
+                    echo "$video_data"
+                  fi
               done
 
               # Check if there is another page of results
@@ -93,21 +95,21 @@ jobs:
       - name: UPSERT playlist
         uses: port-labs/port-github-action@v1
         with:
-          identifier: "${{ fromJson(steps.fetch_videos.outputs.videos_data).identifier }}"
-          title: "${{ fromJson(steps.fetch_videos.outputs.videos_data).title }}"
+          identifier: ${{ fromJson(steps.fetch_videos.outputs.video_data).identifier }}
+          title: ${{ fromJson(steps.fetch_videos.outputs.video_data).title }}
           blueprint: ${{ fromJson(inputs.port_context).blueprint }}
           properties: |
             {
-              "id": "${{ fromJson(steps.fetch_videos.outputs.videos_data).properties.id }}",
-              "title": "${{ fromJson(steps.fetch_videos.outputs.videos_data).properties.title }}",
-              "description": "${{ fromJson(steps.fetch_videos.outputs.videos_data).properties.description }}",
-              "published_at": "${{ fromJson(steps.fetch_videos.outputs.videos_data).properties.published_at }}",
-              "channel_id": "${{ fromJson(steps.fetch_videos.outputs.videos_data).properties.channel_id }}",
-              "channel_title": "${{ fromJson(steps.fetch_videos.outputs.videos_data).properties.channel_title }}",
-              "duration": "${{ fromJson(steps.fetch_videos.outputs.videos_data).properties.duration }}",
-              "view_count": "${{ fromJson(steps.fetch_videos.outputs.videos_data).properties.view_count }}",
-              "like_count": "${{ fromJson(steps.fetch_videos.outputs.videos_data).properties.like_count }}",
-              "comment_count": "${{ fromJson(steps.fetch_videos.outputs.videos_data).properties.comment_count }}"
+              "id": ${{ fromJson(steps.fetch_videos.outputs.video_data).properties.id }},
+              "title": ${{ fromJson(steps.fetch_videos.outputs.video_data).properties.title }},
+              "description": ${{ fromJson(steps.fetch_videos.outputs.video_data).properties.description }},
+              "published_at": ${{ fromJson(steps.fetch_videos.outputs.video_data).properties.published_at }},
+              "channel_id": ${{ fromJson(steps.fetch_videos.outputs.video_data).properties.channel_id }},
+              "channel_title": ${{ fromJson(steps.fetch_videos.outputs.video_data).properties.channel_title }},
+              "duration": ${{ fromJson(steps.fetch_videos.outputs.video_data).properties.duration }},
+              "view_count": ${{ fromJson(steps.fetch_videos.outputs.video_data).properties.view_count }},
+              "like_count": ${{ fromJson(steps.fetch_videos.outputs.video_data).properties.like_count }},
+              "comment_count": ${{ fromJson(steps.fetch_videos.outputs.video_data).properties.comment_count }}
             }
           clientId: ${{ secrets.PORT_CLIENT_ID }}
           clientSecret: ${{ secrets.PORT_CLIENT_SECRET }}
