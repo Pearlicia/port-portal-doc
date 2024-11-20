@@ -110,6 +110,13 @@ jobs:
               [ "$nextPageToken" == "null" ] && break
           done
 
+      - name: Echo video data object in UPSERT step
+        run: |
+          echo "Echoing video data object in UPSERT step:"
+          echo "${{ steps.fetch_videos.outputs.title }}"
+          echo "${{ steps.fetch_videos.outputs.video_id }}"
+
+
       - name: UPSERT playlist
         uses: port-labs/port-github-action@v1
         with:
@@ -135,8 +142,4 @@ jobs:
           operation: UPSERT
           runId: ${{ fromJson(inputs.port_context).run_id }}
 
-      - name: Echo video data object in UPSERT step
-        run: |
-          echo "Echoing video data object in UPSERT step:"
-          echo "${{ steps.fetch_videos.outputs.title }}"
-          echo "${{ steps.fetch_videos.outputs.video_id }}"
+      
