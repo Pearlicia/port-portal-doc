@@ -110,6 +110,7 @@ jobs:
 
                   video=$(echo "$video" | sed ':a;N;$!ba;s/\n/\\n/g' | sed 's/"/\\"/g')
                   echo "$video"
+                  echo "$title"
                   echo "video=$video" >> $GITHUB_OUTPUT
 
                    
@@ -144,8 +145,8 @@ jobs:
                   echo "comment_count=$comment_count" >> $GITHUB_OUTPUT
 
                   
-                  echo "$data"
-                  echo "$title"
+                 # echo "$data"
+                #  echo "$title"
                   
                 
               done
@@ -155,7 +156,7 @@ jobs:
           done
           
           # Escape newlines and special characters
-          data=$(echo "$video_data" | sed ':a;N;$!ba;s/\n/\\n/g' | sed 's/"/\\"/g')
+          data=$(echo "$data" | sed ':a;N;$!ba;s/\n/\\n/g' | sed 's/"/\\"/g')
           
           echo "data=$data" >> $GITHUB_OUTPUT
 
