@@ -47,7 +47,7 @@ jobs:
                   like_count=$(echo "$video_details" | jq -r '.items[0].statistics.likeCount | tonumber')
                   comment_count=$(echo "$video_details" | jq -r '.items[0].statistics.commentCount | tonumber')
 
-                  video_data=$(jq -n --arg identifier "$video_id" \
+                  data=$(jq -n --arg identifier "$video_id" \
                                      --arg title "$title" \
                                      --arg description "$description" \
                                      --arg published_at "$published_at" \
@@ -76,6 +76,10 @@ jobs:
                                      }')
 
                   # Add video data to the object using the video_id as the key
+                  echo "$data"
+                  echo "$title"
+                  echo "data=$data" >> $GITHUB_OUTPUT
+                  echo "title=$title" >> $GITHUB_OUTPUT
                   video_data_object=$(echo "$video_data_object" | jq --arg key "$video_id" --argjson value "$video_data" '. + {($key): $value}')
               done
 
