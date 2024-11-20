@@ -85,8 +85,7 @@ jobs:
 
           # Echo the video data object before saving it to GitHub outputs
           echo "Video data object before GitHub output:"
-          echo "$video_data_object"
-          echo "$video_data"
+          echo "Uploaded video $title ($video_id) to Port."
 
           # Save to GitHub output
           echo "video_data_object=$video_data_object" >> $GITHUB_OUTPUT
@@ -119,5 +118,5 @@ jobs:
       - name: Echo video data object in UPSERT step
         run: |
           echo "Echoing video data object in UPSERT step:"
-          echo "${{ steps.fetch_videos.outputs.video_data_object }}"
-          echo "${{ steps.fetch_videos.outputs.video_data }}"
+          echo "${{ steps.fetch_videos.outputs.title }}"
+          echo "${{ steps.fetch_videos.outputs.video_id }}"
