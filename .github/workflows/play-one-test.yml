@@ -5,7 +5,7 @@ on:
     inputs:
       port_context:
         required: true
-        description: Includes the blueprint identifier, and the action's run id
+        description: Includes the blueprint identifier and the action's run id
       playlist_id:
         required: true
         description: The playlist ID
@@ -47,6 +47,7 @@ jobs:
                   like_count=$(echo "$video_details" | jq -r '.items[0].statistics.likeCount | tonumber')
                   comment_count=$(echo "$video_details" | jq -r '.items[0].statistics.commentCount | tonumber')
 
+                  # Write individual outputs for the first video (optional for UPSERT below)
                   echo "video_id=$video_id" >> $GITHUB_OUTPUT
                   echo "title=\"$title\"" >> $GITHUB_OUTPUT
                   echo "description=\"$description\"" >> $GITHUB_OUTPUT
@@ -58,7 +59,7 @@ jobs:
                   echo "like_count=$like_count" >> $GITHUB_OUTPUT
                   echo "comment_count=$comment_count" >> $GITHUB_OUTPUT
 
-                  # Add video data to the object using the video_id as the key
+                  # Add video data to the aggregated JSON object
                   video_data=$(jq -n --arg identifier "$video_id" \
                                      --arg title "$title" \
                                      --arg description "$description" \
@@ -123,4 +124,5 @@ jobs:
           clientSecret: ${{ secrets.PORT_CLIENT_SECRET }}
           baseUrl: https://api.getport.io
           operation: UPSERT
+          delete_dependents: false
           runId: ${{ fromJson(inputs.port_context).run_id }}
