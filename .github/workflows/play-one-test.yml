@@ -103,6 +103,8 @@ jobs:
                   --data-raw "$data"
 
                   echo "Uploaded video $title ($video_id) to Port."
+                  echo "title=$title" >> $GITHUB_OUTPUT
+                  echo "video_id=$video_id" >> $GITHUB_OUTPUT
               done
 
               # Check if there is another page of results
