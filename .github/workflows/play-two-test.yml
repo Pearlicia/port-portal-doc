@@ -164,14 +164,11 @@ jobs:
         run: |
           name=$(echo '${{ steps.fetch_videos.outputs.video }}' | jq -r '.title')
           echo "The name is $name"
-          echo "Video ID: ${{ steps.fetch_videos.outputs.video | fromJson | video.identifier }}"
-          echo "Title: ${{ steps.fetch_videos.outputs.video | fromJson | video.title }}"
-          echo "Description: ${{ steps.fetch_videos.outputs.video | fromJson | video.description }}"
-          echo "Published at: ${{ steps.fetch_videos.outputs.vodeo | fromJson | video.published_at }}"
-          echo "Channel ID: ${{ steps.fetch_videos.outputs.video | fromJson | video.channel_id }}"
-          echo "Channel Title: ${{ steps.fetch_videos.outputs.video | fromJson | video.channel_title }}"
-          echo "Duration: ${{ steps.fetch_videos.outputs.video | fromJson | video.duration }}"
-      
+          echo "Video ID: ${{ steps.fetch_videos.outputs.video }} | jq -r '.identifier' }}"
+          echo "Title: ${{ steps.fetch_videos.outputs.video }} | jq -r '.title' }}"
+          echo "Description: ${{ steps.fetch_videos.outputs.video }} | jq -r '.description' }}"
+          echo "Published at: ${{ steps.fetch_videos.outputs.vodeo }} | jq -r '.published_at' }}"
+          
       - name: UPSERT playlist
         uses: port-labs/port-github-action@v1
         with:
