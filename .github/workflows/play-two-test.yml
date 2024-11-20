@@ -172,8 +172,8 @@ jobs:
       - name: UPSERT playlist
         uses: port-labs/port-github-action@v1
         with:
-          identifier: "${{ steps.fetch_videos.outputs.video | fromJson | video.identifier }}"
-          title: "${{ steps.fetch_videos.outputs.video | fromJson | video.title }}"
+          identifier: "${{ steps.fetch_videos.outputs.video.identifier }}"
+          title: "${{ steps.fetch_videos.outputs.video.title }}"
           blueprint: ${{ fromJson(inputs.port_context).blueprint }}
           properties: |
             {
