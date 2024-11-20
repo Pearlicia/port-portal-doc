@@ -99,6 +99,12 @@ jobs:
 
           echo "video_data_object=$video_data_object" >> $GITHUB_OUTPUT
 
+      - name: Use Outputs from Fetch Videos
+        run: |
+          echo "Video ID: ${{ steps.fetch_videos.outputs.video_id }}"
+          echo "Description: ${{ steps.fetch_videos.outputs.description }}"
+
+
       - name: UPSERT playlist
         uses: port-labs/port-github-action@v1
         with:
