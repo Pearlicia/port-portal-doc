@@ -99,7 +99,6 @@ jobs:
                                          like_count: $like_count,
                                          comment_count: $comment_count
                                          
-                                         relations: {}
                                      }')
                   
 
