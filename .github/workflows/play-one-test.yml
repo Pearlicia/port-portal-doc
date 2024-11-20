@@ -75,12 +75,43 @@ jobs:
                                          relations: {}
                                      }')
 
-                  # Add video data to the object using the video_id as the key
+                  # Add data to output
+                   
+                  video_id=$(echo "$video_id" | sed ':a;N;$!ba;s/\n/\\n/g' | sed 's/"/\\"/g')
+                  echo "video_id=$video_id" >> $GITHUB_OUTPUT
+
+                  title=$(echo "$title" | sed ':a;N;$!ba;s/\n/\\n/g' | sed 's/"/\\"/g')
+                  echo "title=$title" >> $GITHUB_OUTPUT
+
+                  description=$(echo "$description" | sed ':a;N;$!ba;s/\n/\\n/g' | sed 's/"/\\"/g')
+                  echo "description=$description" >> $GITHUB_OUTPUT
+
+                  published_at=$(echo "$published_at" | sed ':a;N;$!ba;s/\n/\\n/g' | sed 's/"/\\"/g')
+                  echo "published_at=$published_at" >> $GITHUB_OUTPUT
+
+                  channel_id=$(echo "$channel_id" | sed ':a;N;$!ba;s/\n/\\n/g' | sed 's/"/\\"/g')
+                  echo "channel_id=$channel_id" >> $GITHUB_OUTPUT
+
+                  channel_title=$(echo "$channel_title" | sed ':a;N;$!ba;s/\n/\\n/g' | sed 's/"/\\"/g')
+                  echo "channel_title=$channel_title" >> $GITHUB_OUTPUT
+
+                  duration=$(echo "$duration" | sed ':a;N;$!ba;s/\n/\\n/g' | sed 's/"/\\"/g')
+                  echo "duration=$duration" >> $GITHUB_OUTPUT
+
+                  view_count=$(echo "$view_count" | sed ':a;N;$!ba;s/\n/\\n/g' | sed 's/"/\\"/g')
+                  echo "view_count=$view_count" >> $GITHUB_OUTPUT
+
+                  like_count=$(echo "$like_count" | sed ':a;N;$!ba;s/\n/\\n/g' | sed 's/"/\\"/g')
+                  echo "like_count=$like_count" >> $GITHUB_OUTPUT
+
+                  comment_count=$(echo "$comment_count" | sed ':a;N;$!ba;s/\n/\\n/g' | sed 's/"/\\"/g')
+                  echo "comment_count=$comment_count" >> $GITHUB_OUTPUT
+
+                  
                   echo "$data"
                   echo "$title"
-                  echo "data=$data" >> $GITHUB_ENV
-                  echo "title=$title" >> $GITHUB_OUTPUT
-                  video_data_object=$(echo "$video_data_object" | jq --arg key "$video_id" --argjson value "$video_data" '. + {($key): $value}')
+                  
+                
               done
 
               nextPageToken=$(echo "$response" | jq -r '.nextPageToken')
@@ -94,31 +125,31 @@ jobs:
 
       - name: Debug the Output Values
         run: |
-          echo "Video ID: ${{ steps.fetch_videos.outputs.data.identifier }}"
-          echo "Title: ${{ steps.fetch_videos.outputs.data.title }}"
-          echo "Description: ${{ steps.fetch_videos.outputs.data.properties.description }}"
-          echo "Published at: ${{ steps.fetch_videos.outputs.data.properties.published_at }}"
-          echo "Channel ID: ${{ steps.fetch_videos.outputs.data.properties.channel_id }}"
-          echo "Channel Title: ${{ steps.fetch_videos.outputs.data.properties.channel_title }}"
-          echo "Duration: ${{ steps.fetch_videos.outputs.data.properties.duration }}"
+          echo "Video ID: ${{ steps.fetch_videos.outputs.video_id }}"
+          echo "Title: ${{ steps.fetch_videos.outputs.title }}"
+          echo "Description: ${{ steps.fetch_videos.outputs.description }}"
+          echo "Published at: ${{ steps.fetch_videos.outputs.published_at }}"
+          echo "Channel ID: ${{ steps.fetch_videos.outputs.channel_id }}"
+          echo "Channel Title: ${{ steps.fetch_videos.outputs.channel_title }}"
+          echo "Duration: ${{ steps.fetch_videos.outputs.duration }}"
       
 
       - name: UPSERT playlist
         uses: port-labs/port-github-action@v1
         with:
-          identifier: "${{ steps.fetch_videos.outputs.data.identifier }}"
-          title: "${{ steps.fetch_videos.outputs.data.title }}"
+          identifier: "${{ steps.fetch_videos.outputs.video_id }}"
+          title: "${{ steps.fetch_videos.outputs.title }}"
           blueprint: ${{ fromJson(inputs.port_context).blueprint }}
           properties: |
             {
-              "description": "${{ steps.fetch_videos.outputs.data.properties.description }}",
-              "published_at": "${{ steps.fetch_videos.outputs.data.properties.published_at }}",
-              "channel_id": "${{ steps.fetch_videos.outputs.data.properties.channel_id }}",
-              "channel_title": "${{ steps.fetch_videos.outputs.data.properties.channel_title }}",
-              "duration": "${{ steps.fetch_videos.outputs.data.properties.duration }}",
-              "view_count": "${{ steps.fetch_videos.outputs.data.properties.view_count }}",
-              "like_count": "${{ steps.fetch_videos.outputs.data.properties.like_count }}",
-              "comment_count": "${{ steps.fetch_videos.outputs.data.properties.comment_count }}"
+              "description": "${{ steps.fetch_videos.outputs.description }}",
+              "published_at": "${{ steps.fetch_videos.outputs.published_at }}",
+              "channel_id": "${{ steps.fetch_videos.outputs.channel_id }}",
+              "channel_title": "${{ steps.fetch_videos.outputs.channel_title }}",
+              "duration": "${{ steps.fetch_videos.outputs.duration }}",
+              "view_count": "${{ steps.fetch_videos.outputs.view_count }}",
+              "like_count": "${{ steps.fetch_videos.outputs.like_count }}",
+              "comment_count": "${{ steps.fetch_videos.outputs.comment_count }}"
             }
           clientId: ${{ secrets.PORT_CLIENT_ID }}
           clientSecret: ${{ secrets.PORT_CLIENT_SECRET }}
