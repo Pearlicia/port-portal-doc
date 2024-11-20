@@ -35,31 +35,31 @@ jobs:
               
               echo "$response" | jq -c '.items[]' | while read -r item; do
                   video_id=$(echo "$item" | jq -r '.contentDetails.videoId')
-                  title=$(echo "$item" | jq -r '.snippet.title' | sed ':a;N;$!ba;s/\n/ /g')
-                  description=$(echo "$item" | jq -r '.snippet.description' | sed ':a;N;$!ba;s/\n/ /g')
-                  published_at=$(echo "$item" | jq -r '.contentDetails.videoPublishedAt')
-                  channel_id=$(echo "$item" | jq -r '.snippet.channelId')
-                  channel_title=$(echo "$item" | jq -r '.snippet.channelTitle' | sed ':a;N;$!ba;s/\n/ /g')
+                  title=$(echo "$item" | jq -r '.snippet.title' | sed ':a;N;$!ba;s/\n/ /g' | sed 's/"/\\"/g')
+                  description=$(echo "$item" | jq -r '.snippet.description' | sed ':a;N;$!ba;s/\n/ /g' | sed 's/"/\\"/g')
+                  published_at=$(echo "$item" | jq -r '.contentDetails.videoPublishedAt' | sed ':a;N;$!ba;s/\n/ /g' | sed 's/"/\\"/g')
+                  channel_id=$(echo "$item" | jq -r '.snippet.channelId' | sed ':a;N;$!ba;s/\n/ /g' | sed 's/"/\\"/g')
+                  channel_title=$(echo "$item" | jq -r '.snippet.channelTitle' | sed ':a;N;$!ba;s/\n/ /g' | sed 's/"/\\"/g')
 
                   video_details=$(curl -s "https://www.googleapis.com/youtube/v3/videos?part=statistics,contentDetails&id=$video_id&key=$YOUTUBE_API_KEY")
-                  duration=$(echo "$video_details" | jq -r '.items[0].contentDetails.duration')
-                  view_count=$(echo "$video_details" | jq -r '.items[0].statistics.viewCount | tonumber')
-                  like_count=$(echo "$video_details" | jq -r '.items[0].statistics.likeCount | tonumber')
-                  comment_count=$(echo "$video_details" | jq -r '.items[0].statistics.commentCount | tonumber')
+                  duration=$(echo "$video_details" | jq -r '.items[0].contentDetails.duration' | sed ':a;N;$!ba;s/\n/ /g' | sed 's/"/\\"/g')
+                  view_count=$(echo "$video_details" | jq -r '.items[0].statistics.viewCount | tonumber' | sed ':a;N;$!ba;s/\n/ /g' | sed 's/"/\\"/g')
+                  like_count=$(echo "$video_details" | jq -r '.items[0].statistics.likeCount | tonumber' | sed ':a;N;$!ba;s/\n/ /g' | sed 's/"/\\"/g')
+                  comment_count=$(echo "$video_details" | jq -r '.items[0].statistics.commentCount | tonumber' | sed ':a;N;$!ba;s/\n/ /g' | sed 's/"/\\"/g')
 
-                  # Write individual outputs for the first video (optional for UPSERT below)
+                  # Sanitize and save each output, ensure there are no newlines or quotes that break JSON
                   echo "video_id=$video_id" >> $GITHUB_OUTPUT
                   echo "title=\"$title\"" >> $GITHUB_OUTPUT
                   echo "description=\"$description\"" >> $GITHUB_OUTPUT
-                  echo "published_at=$published_at" >> $GITHUB_OUTPUT
-                  echo "channel_id=$channel_id" >> $GITHUB_OUTPUT
+                  echo "published_at=\"$published_at\"" >> $GITHUB_OUTPUT
+                  echo "channel_id=\"$channel_id\"" >> $GITHUB_OUTPUT
                   echo "channel_title=\"$channel_title\"" >> $GITHUB_OUTPUT
-                  echo "duration=$duration" >> $GITHUB_OUTPUT
-                  echo "view_count=$view_count" >> $GITHUB_OUTPUT
-                  echo "like_count=$like_count" >> $GITHUB_OUTPUT
-                  echo "comment_count=$comment_count" >> $GITHUB_OUTPUT
+                  echo "duration=\"$duration\"" >> $GITHUB_OUTPUT
+                  echo "view_count=\"$view_count\"" >> $GITHUB_OUTPUT
+                  echo "like_count=\"$like_count\"" >> $GITHUB_OUTPUT
+                  echo "comment_count=\"$comment_count\"" >> $GITHUB_OUTPUT
 
-                  # Add video data to the aggregated JSON object
+                  # Build video data and add it to the video data object
                   video_data=$(jq -n --arg identifier "$video_id" \
                                      --arg title "$title" \
                                      --arg description "$description" \
@@ -88,6 +88,7 @@ jobs:
                                          relations: {}
                                      }')
 
+                  # Add video data to the object using the video_id as the key
                   video_data_object=$(echo "$video_data_object" | jq --arg key "$video_id" --argjson value "$video_data" '. + {($key): $value}')
               done
 
@@ -97,11 +98,18 @@ jobs:
 
           echo "video_data_object=$video_data_object" >> $GITHUB_OUTPUT
 
-      - name: Debug Outputs
+      - name: Debug the Output Values
         run: |
           echo "Video ID: ${{ steps.fetch_videos.outputs.video_id }}"
           echo "Title: ${{ steps.fetch_videos.outputs.title }}"
           echo "Description: ${{ steps.fetch_videos.outputs.description }}"
+          echo "Published at: ${{ steps.fetch_videos.outputs.published_at }}"
+          echo "Channel ID: ${{ steps.fetch_videos.outputs.channel_id }}"
+          echo "Channel Title: ${{ steps.fetch_videos.outputs.channel_title }}"
+          echo "Duration: ${{ steps.fetch_videos.outputs.duration }}"
+          echo "View Count: ${{ steps.fetch_videos.outputs.view_count }}"
+          echo "Like Count: ${{ steps.fetch_videos.outputs.like_count }}"
+          echo "Comment Count: ${{ steps.fetch_videos.outputs.comment_count }}"
 
       - name: UPSERT playlist
         uses: port-labs/port-github-action@v1
