@@ -5,7 +5,7 @@ on:
     inputs:
       port_context:
         required: true
-        description: Includes the blueprint identifier and the action's run ID
+        description: Includes the blueprint identifier, and the action's run ID
       playlist_id:
         required: true
         description: The playlist ID
@@ -21,16 +21,16 @@ jobs:
       - name: Install jq
         run: sudo apt-get install -y jq
 
-      - name: Fetch and Ingest YouTube Playlist Videos
+      - name: Fetch and Ingest YouTube Playlist to Port
         id: fetch_videos
         env:
           YOUTUBE_API_KEY: ${{ secrets.YOUTUBE_API_KEY }}
         run: |
           PLAYLIST_ID=${{ inputs.playlist_id }}
-          nextPageToken=""
+          video_data_object="{}"  # Initialize the object to store video data
 
+          nextPageToken=""
           while true; do
-              # Fetch playlist items
               response=$(curl -s "https://www.googleapis.com/youtube/v3/playlistItems?part=snippet,contentDetails&playlistId=$PLAYLIST_ID&maxResults=50&pageToken=$nextPageToken&key=$YOUTUBE_API_KEY")
               
               echo "$response" | jq -c '.items[]' | while read -r item; do
@@ -41,68 +41,81 @@ jobs:
                   channel_id=$(echo "$item" | jq -r '.snippet.channelId')
                   channel_title=$(echo "$item" | jq -r '.snippet.channelTitle')
 
-                  # Fetch additional video details
                   video_details=$(curl -s "https://www.googleapis.com/youtube/v3/videos?part=statistics,contentDetails&id=$video_id&key=$YOUTUBE_API_KEY")
                   duration=$(echo "$video_details" | jq -r '.items[0].contentDetails.duration')
                   view_count=$(echo "$video_details" | jq -r '.items[0].statistics.viewCount | tonumber')
                   like_count=$(echo "$video_details" | jq -r '.items[0].statistics.likeCount | tonumber')
                   comment_count=$(echo "$video_details" | jq -r '.items[0].statistics.commentCount | tonumber')
 
-                  # Prepare GitHub Action outputs for each video
-                  echo "::set-output name=video_${video_id}_data::$(jq -n --arg identifier "$video_id" \
-                      --arg title "$title" \
-                      --arg description "$description" \
-                      --arg published_at "$published_at" \
-                      --arg channel_id "$channel_id" \
-                      --arg channel_title "$channel_title" \
-                      --arg duration "$duration" \
-                      --argjson view_count "$view_count" \
-                      --argjson like_count "$like_count" \
-                      --argjson comment_count "$comment_count" \
-                      '{
-                          identifier: $identifier,
-                          title: $title,
-                          properties: {
-                              id: $identifier,
-                              description: $description,
-                              title: $title,
-                              published_at: $published_at,
-                              channel_id: $channel_id,
-                              channel_title: $channel_title,
-                              duration: $duration,
-                              view_count: $view_count,
-                              like_count: $like_count,
-                              comment_count: $comment_count
-                          },
-                          relations: {}
-                      }')"
+                  video_data=$(jq -n --arg identifier "$video_id" \
+                                     --arg title "$title" \
+                                     --arg description "$description" \
+                                     --arg published_at "$published_at" \
+                                     --arg channel_id "$channel_id" \
+                                     --arg channel_title "$channel_title" \
+                                     --arg duration "$duration" \
+                                     --arg view_count "$view_count" \
+                                     --arg like_count "$like_count" \
+                                     --arg comment_count "$comment_count" \
+                                     '{
+                                         identifier: $identifier,
+                                         title: $title,
+                                         properties: {
+                                             id: $identifier,
+                                             description: $description,
+                                             title: $title,
+                                             published_at: $published_at,
+                                             channel_id: $channel_id,
+                                             channel_title: $channel_title,
+                                             duration: $duration,
+                                             view_count: $view_count,
+                                             like_count: $like_count,
+                                             comment_count: $comment_count
+                                         },
+                                         relations: {}
+                                     }')
+
+                  # Add video data to the object using the video_id as the key
+                  video_data_object=$(echo "$video_data_object" | jq --arg key "$video_id" --argjson value "$video_data" '. + {($key): $value}')
               done
 
               nextPageToken=$(echo "$response" | jq -r '.nextPageToken')
               [ "$nextPageToken" == "null" ] && break
           done
 
-      - name: UPSERT Playlist Videos in Port
+          # Echo the video data object before saving it to GitHub outputs
+          echo "Video data object before GitHub output:"
+          echo "$video_data_object"
+
+          # Save to GitHub output
+          echo "video_data_object=$video_data_object" >> $GITHUB_OUTPUT
+
+      - name: UPSERT playlist
         uses: port-labs/port-github-action@v1
         with:
+          identifier: "${{ fromJson(steps.fetch_videos.outputs.video_data_object).videoId.identifier }}"
+          title: "${{ fromJson(steps.fetch_videos.outputs.video_data_object).videoId.title }}"
           blueprint: ${{ fromJson(inputs.port_context).blueprint }}
           properties: |
             {
-              "id": "${{ fromJson(steps.fetch_videos.outputs.video_${video_id}_data).properties.id }}",
-              "title": "${{ fromJson(steps.fetch_videos.outputs.video_${video_id}_data).properties.title }}",
-              "description": "${{ fromJson(steps.fetch_videos.outputs.video_${video_id}_data).properties.description }}",
-              "published_at": "${{ fromJson(steps.fetch_videos.outputs.video_${video_id}_data).properties.published_at }}",
-              "channel_id": "${{ fromJson(steps.fetch_videos.outputs.video_${video_id}_data).properties.channel_id }}",
-              "channel_title": "${{ fromJson(steps.fetch_videos.outputs.video_${video_id}_data).properties.channel_title }}",
-              "duration": "${{ fromJson(steps.fetch_videos.outputs.video_${video_id}_data).properties.duration }}",
-              "view_count": "${{ fromJson(steps.fetch_videos.outputs.video_${video_id}_data).properties.view_count }}",
-              "like_count": "${{ fromJson(steps.fetch_videos.outputs.video_${video_id}_data).properties.like_count }}",
-              "comment_count": "${{ fromJson(steps.fetch_videos.outputs.video_${video_id}_data).properties.comment_count }}"
+              "id": "${{ fromJson(steps.fetch_videos.outputs.video_data_object).videoId.properties.id }}",
+              "title": "${{ fromJson(steps.fetch_videos.outputs.video_data_object).videoId.properties.title }}",
+              "description": "${{ fromJson(steps.fetch_videos.outputs.video_data_object).videoId.properties.description }}",
+              "published_at": "${{ fromJson(steps.fetch_videos.outputs.video_data_object).videoId.properties.published_at }}",
+              "channel_id": "${{ fromJson(steps.fetch_videos.outputs.video_data_object).videoId.properties.channel_id }}",
+              "channel_title": "${{ fromJson(steps.fetch_videos.outputs.video_data_object).videoId.properties.channel_title }}",
+              "duration": "${{ fromJson(steps.fetch_videos.outputs.video_data_object).videoId.properties.duration }}",
+              "view_count": "${{ fromJson(steps.fetch_videos.outputs.video_data_object).videoId.properties.view_count }}",
+              "like_count": "${{ fromJson(steps.fetch_videos.outputs.video_data_object).videoId.properties.like_count }}",
+              "comment_count": "${{ fromJson(steps.fetch_videos.outputs.video_data_object).videoId.properties.comment_count }}"
             }
-          identifier: "${{ fromJson(steps.fetch_videos.outputs.video_${video_id}_data).identifier }}"
-          title: "${{ fromJson(steps.fetch_videos.outputs.video_${video_id}_data).title }}"
           clientId: ${{ secrets.PORT_CLIENT_ID }}
           clientSecret: ${{ secrets.PORT_CLIENT_SECRET }}
           baseUrl: https://api.getport.io
           operation: UPSERT
           runId: ${{ fromJson(inputs.port_context).run_id }}
+
+      - name: Echo video data object in UPSERT step
+        run: |
+          echo "Echoing video data object in UPSERT step:"
+          echo "${{ steps.fetch_videos.outputs.video_data_object }}"
