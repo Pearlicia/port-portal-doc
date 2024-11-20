@@ -78,7 +78,7 @@ jobs:
                   # Add video data to the object using the video_id as the key
                   echo "$data"
                   echo "$title"
-                  echo "data=$data" >> $GITHUB_OUTPUT
+                  echo "data=$data" >> $GITHUB_ENV
                   echo "title=$title" >> $GITHUB_OUTPUT
                   video_data_object=$(echo "$video_data_object" | jq --arg key "$video_id" --argjson value "$video_data" '. + {($key): $value}')
               done
