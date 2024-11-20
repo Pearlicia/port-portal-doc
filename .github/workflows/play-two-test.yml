@@ -167,7 +167,7 @@ jobs:
           echo "Video ID: ${{ steps.fetch_videos.outputs.video }} | jq -r '.identifier' }}"
           echo "Title: ${{ steps.fetch_videos.outputs.video }} | jq -r '.title' }}"
           echo "Description: ${{ steps.fetch_videos.outputs.video }} | jq -r '.description' }}"
-          echo "Published at: ${{ steps.fetch_videos.outputs.vodeo }} | jq -r '.published_at' }}"
+          echo "Published at: ${{ steps.fetch_videos.outputs.video }} | jq -r '.published_at' }}"
           
       - name: UPSERT playlist
         uses: port-labs/port-github-action@v1
@@ -177,14 +177,14 @@ jobs:
           blueprint: ${{ fromJson(inputs.port_context).blueprint }}
           properties: |
             {
-              "description": "${{ steps.fetch_videos.outputs.description }}",
-              "published_at": "${{ steps.fetch_videos.outputs.published_at }}",
-              "channel_id": "${{ steps.fetch_videos.outputs.channel_id }}",
-              "channel_title": "${{ steps.fetch_videos.outputs.channel_title }}",
-              "duration": "${{ steps.fetch_videos.outputs.duration }}",
-              "view_count": "${{ steps.fetch_videos.outputs.view_count }}",
-              "like_count": "${{ steps.fetch_videos.outputs.like_count }}",
-              "comment_count": "${{ steps.fetch_videos.outputs.comment_count }}"
+              "description": "${{ steps.fetch_videos.outputs.video.description }}",
+              "published_at": "${{ steps.fetch_videos.outputs.video.published_at }}",
+              "channel_id": "${{ steps.fetch_videos.outputs.video.channel_id }}",
+              "channel_title": "${{ steps.fetch_videos.outputs.video.channel_title }}",
+              "duration": "${{ steps.fetch_videos.outputs.video.duration }}",
+              "view_count": "${{ steps.fetch_videos.outputs.video.view_count }}",
+              "like_count": "${{ steps.fetch_videos.outputs.video.like_count }}",
+              "comment_count": "${{ steps.fetch_videos.outputs.video.comment_count }}"
             }
           clientId: ${{ secrets.PORT_CLIENT_ID }}
           clientSecret: ${{ secrets.PORT_CLIENT_SECRET }}
