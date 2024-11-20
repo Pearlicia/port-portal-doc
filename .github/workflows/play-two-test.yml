@@ -160,14 +160,14 @@ jobs:
           
           echo "data=$data" >> $GITHUB_OUTPUT
 
-      - name: Debug the Output Values
-        run: |
-          name=$(echo '${{ steps.fetch_videos.outputs.video }}' | jq -r '.title')
-          echo "The name is $name"
-          echo "Video ID: ${{ steps.fetch_videos.outputs.video }} | jq -r '.identifier' }}"
-          echo "Title: ${{ steps.fetch_videos.outputs.video }} | jq -r '.title' }}"
-          echo "Description: ${{ steps.fetch_videos.outputs.video }} | jq -r '.description' }}"
-          echo "Published at: ${{ steps.fetch_videos.outputs.video }} | jq -r '.published_at' }}"
+      #- name: Debug the Output Values
+        #run: |
+         # name=$(echo '${{ steps.fetch_videos.outputs.video }}' | jq -r '.title')
+          #echo "The name is $name"
+          #echo "Video ID: ${{ steps.fetch_videos.outputs.video }} | jq -r '.identifier' }}"
+          #echo "Title: ${{ steps.fetch_videos.outputs.video }} | jq -r '.title' }}"
+          #echo "Description: ${{ steps.fetch_videos.outputs.video }} | jq -r '.description' }}"
+          #echo "Published at: ${{ steps.fetch_videos.outputs.video }} | jq -r '.published_at' }}"
           
       - name: UPSERT playlist
         uses: port-labs/port-github-action@v1
