@@ -86,7 +86,7 @@ jobs:
           # Echo the video data object before saving it to GitHub outputs
           echo "Video data object before GitHub output:"
           echo "$video_data_object"
-          echo "$video_data
+          echo "$video_data"
 
           # Save to GitHub output
           echo "video_data_object=$video_data_object" >> $GITHUB_OUTPUT
