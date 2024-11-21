@@ -108,10 +108,16 @@ jobs:
                   # Add data to output
                   
 
-                  video=$(echo "$video" | sed ':a;N;$!ba;s/\n/\\n/g' | sed 's/"/\\"/g')
-                  echo "$video"
-                  echo "$title"
-                  echo "video=$video" >> $GITHUB_OUTPUT
+                  #video=$(echo "$video" | sed ':a;N;$!ba;s/\n/\\n/g' | sed 's/"/\\"/g')
+                  # echo "$video"
+                  # echo "$title"
+                  #echo "video=$video" >> $GITHUB_OUTPUT
+
+                  # Escape newlines and special characters
+                  data=$(echo "$data" | sed ':a;N;$!ba;s/\n/\\n/g' | sed 's/"/\\"/g')
+          
+                  echo "data=$data" >> $GITHUB_OUTPUT
+                  echo "$data"
 
                    
                   video_id=$(echo "$video_id" | sed ':a;N;$!ba;s/\n/\\n/g' | sed 's/"/\\"/g')
@@ -155,14 +161,11 @@ jobs:
               [ "$nextPageToken" == "null" ] && break
           done
           
-          # Escape newlines and special characters
-          data=$(echo "$data" | sed ':a;N;$!ba;s/\n/\\n/g' | sed 's/"/\\"/g')
-          
-          echo "data=$data" >> $GITHUB_OUTPUT
+         
 
-      #- name: Debug the Output Values
-        #run: |
-         # name=$(echo '${{ steps.fetch_videos.outputs.video }}' | jq -r '.title')
+      # - name: Debug the Output Values
+      #   run: |
+      #     name=$(echo '${{ steps.fetch_videos.outputs.video }}' | jq -r '.title')
           #echo "The name is $name"
           #echo "Video ID: ${{ steps.fetch_videos.outputs.video }} | jq -r '.identifier' }}"
           #echo "Title: ${{ steps.fetch_videos.outputs.video }} | jq -r '.title' }}"
@@ -175,19 +178,9 @@ jobs:
           identifier: "${{ steps.fetch_videos.outputs.video.identifier }}"
           title: "${{ steps.fetch_videos.outputs.video.title }}"
           blueprint: ${{ fromJson(inputs.port_context).blueprint }}
-          properties: |
-            {
-              "description": "${{ steps.fetch_videos.outputs.video.description }}",
-              "published_at": "${{ steps.fetch_videos.outputs.video.published_at }}",
-              "channel_id": "${{ steps.fetch_videos.outputs.video.channel_id }}",
-              "channel_title": "${{ steps.fetch_videos.outputs.video.channel_title }}",
-              "duration": "${{ steps.fetch_videos.outputs.video.duration }}",
-              "view_count": "${{ steps.fetch_videos.outputs.video.view_count }}",
-              "like_count": "${{ steps.fetch_videos.outputs.video.like_count }}",
-              "comment_count": "${{ steps.fetch_videos.outputs.video.comment_count }}"
-            }
           clientId: ${{ secrets.PORT_CLIENT_ID }}
           clientSecret: ${{ secrets.PORT_CLIENT_SECRET }}
           baseUrl: https://api.getport.io
-          operation: UPSERT
+          operation: BULK_UPSERT
           runId: ${{ fromJson(inputs.port_context).run_id }}
+          entities: ${{ steps.fetch_videos.outputs.data }}
