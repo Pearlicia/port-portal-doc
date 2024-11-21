@@ -54,29 +54,33 @@ jobs:
                   comment_count=$(echo "$video_details" | jq -r '.items[0].statistics.commentCount | tonumber')
 
                   # Create video JSON object
-                  video=$(jq -n --arg identifier "$video_id" \
-                                     --arg title "$title" \
-                                     --arg description "$description" \
-                                     --arg published_at "$published_at" \
-                                     --arg channel_id "$channel_id" \
-                                     --arg channel_title "$channel_title" \
-                                     --arg duration "$duration" \
-                                     --argjson view_count "$view_count" \
-                                     --argjson like_count "$like_count" \
-                                     --argjson comment_count "$comment_count" \
-                                     '{
-                                         identifier: $identifier,
-                                         title: $title,
-                                         id: $identifier,
-                                         description: $description,
-                                         published_at: $published_at,
-                                         channel_id: $channel_id,
-                                         channel_title: $channel_title,
-                                         duration: $duration,
-                                         view_count: $view_count,
-                                         like_count: $like_count,
-                                         comment_count: $comment_count
-                                     }')
+                   video_data_object=$(jq -n '[]' | jq -s add --argjson identifier "$video_id" \
+                    --argjson title "$title" \
+                    --argjson description "$description" \
+                    --argjson published_at "$published_at" \
+                    --argjson channel_id "$channel_id" \
+                    --argjson channel_title "$channel_title" \
+                    --argjson duration "$duration" \
+                    --argjson view_count "$view_count" \
+                    --argjson like_count "$like_count" \
+                    --argjson comment_count "$comment_count" \
+                    '[{
+                        identifier: $identifier,
+                        title: $title,
+                        properties: {
+                            id: $identifier,
+                            description: $description,
+                            title: $title,
+                            published_at: $published_at,
+                            channel_id: $channel_id,
+                            channel_title: $channel_title,
+                            duration: $duration,
+                            view_count: $view_count,
+                            like_count: $like_count,
+                            comment_count: $comment_count
+                        },
+                        relations: {}
+                    }]')
 
                   
 
