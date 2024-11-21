@@ -27,7 +27,7 @@ jobs:
           YOUTUBE_API_KEY: ${{ secrets.YOUTUBE_API_KEY }}
         run: |
           PLAYLIST_ID=${{ inputs.playlist_id }}
-          video="[]" # Initialize an empty JSON array
+          video_array="[]" # Initialize an empty JSON array
 
           nextPageToken=""
           while true; do
@@ -78,7 +78,10 @@ jobs:
                                          comment_count: $comment_count
                                      }')
 
-                  echo "$video"
+                  
+                  echo "video_array=$video" >> $GITHUB_OUTPUT
+                  echo "$video_array"
+
 
                   # Append the video to the array
                   video_array=$(echo "$video_array" | jq ". + [$video]")
