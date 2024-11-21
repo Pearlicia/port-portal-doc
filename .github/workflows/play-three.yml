@@ -83,6 +83,9 @@ jobs:
 
                   # Append the video JSON object to the array
                   video_array=$(echo "$video_array" | jq ". + [$video_data]")
+
+                  echo "video_array=$video_array" >> $GITHUB_OUTPUT
+
     
               done
 
@@ -92,7 +95,7 @@ jobs:
           done
 
           # Output the final video array
-          echo "video_array=$video_array" >> $GITHUB_OUTPUT
+          #echo "video_array=$video_array" >> $GITHUB_OUTPUT
 
       - name: Debug the Output Values
         run: |
