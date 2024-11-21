@@ -79,11 +79,11 @@ jobs:
                                      }')
 
                   
-                  echo "video_array=$video" >> $GITHUB_OUTPUT
-                  echo "$video_array"
 
 
                   # Append the video to the array
+                  video_data_object=$(jq -s add $video_data_object $video)
+                  echo gemini "$video_data_object"
                   video_array=$(echo "$video_array" | jq ". + [$video]")
 
                   # Debug the current state of the array
