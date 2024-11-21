@@ -27,56 +27,69 @@ jobs:
           YOUTUBE_API_KEY: ${{ secrets.YOUTUBE_API_KEY }}
         run: |
           PLAYLIST_ID=${{ inputs.playlist_id }}
-
-          # Initialize the JSON array
           data="[]"
 
-          # Fetch Playlist Videos from YouTube API
           nextPageToken=""
           while true; do
-              # Fetch the current page of videos
               response=$(curl -s "https://www.googleapis.com/youtube/v3/playlistItems?part=snippet,contentDetails&playlistId=$PLAYLIST_ID&maxResults=50&pageToken=$nextPageToken&key=$YOUTUBE_API_KEY")
+              
+              echo "$response" | jq -c '.items[]' | while read -r item; do
+                  video_id=$(echo "$item" | jq -r '.contentDetails.videoId')
+                  title=$(echo "$item" | jq -r '.snippet.title')
+                  description=$(echo "$item" | jq -r '.snippet.description')
+                  published_at=$(echo "$item" | jq -r '.contentDetails.videoPublishedAt')
+                  channel_id=$(echo "$item" | jq -r '.snippet.channelId')
+                  channel_title=$(echo "$item" | jq -r '.snippet.channelTitle')
 
-              # Process each video in the response
-              page_videos=$(echo "$response" | jq -c '[.items[] | {
-                  identifier: .contentDetails.videoId,
-                  title: .snippet.title,
-                  properties: {
-                      id: .contentDetails.videoId,
-                      description: .snippet.description,
-                      title: .snippet.title,
-                      published_at: .contentDetails.videoPublishedAt,
-                      channel_id: .snippet.channelId,
-                      channel_title: .snippet.channelTitle,
-                      additional_details: (
-                          # Fetch additional video details
-                          (curl -s "https://www.googleapis.com/youtube/v3/videos?part=statistics,contentDetails&id=\(.contentDetails.videoId)&key=$YOUTUBE_API_KEY") | .items[0] | {
-                              duration: .contentDetails.duration,
-                              view_count: (.statistics.viewCount | tonumber),
-                              like_count: (.statistics.likeCount | tonumber),
-                              comment_count: (.statistics.commentCount | tonumber)
-                          }
-                      )
-                  },
-                  relations: {}
-              }]')
+                  # Fetching additional video details (duration, view count, like count, comment count)
+                  video_details=$(curl -s "https://www.googleapis.com/youtube/v3/videos?part=statistics,contentDetails&id=$video_id&key=$YOUTUBE_API_KEY")
+                  duration=$(echo "$video_details" | jq -r '.items[0].contentDetails.duration')
+                  view_count=$(echo "$video_details" | jq -r '.items[0].statistics.viewCount | tonumber')
+                  like_count=$(echo "$video_details" | jq -r '.items[0].statistics.likeCount | tonumber')
+                  comment_count=$(echo "$video_details" | jq -r '.items[0].statistics.commentCount | tonumber')
 
-              # Merge the current page videos with the main array
-              data=$(echo "$data" | jq --argjson new_videos "$page_videos" '. + $new_videos')
+                  # Creating the JSON object for each video
+                  video_data=$(jq -n --arg identifier "$video_id" \
+                                     --arg title "$title" \
+                                     --arg description "$description" \
+                                     --arg published_at "$published_at" \
+                                     --arg channel_id "$channel_id" \
+                                     --arg channel_title "$channel_title" \
+                                     --arg duration "$duration" \
+                                     --arg view_count "$view_count" \
+                                     --arg like_count "$like_count" \
+                                     --arg comment_count "$comment_count" \
+                                     '{
+                                         identifier: $identifier,
+                                         title: $title,
+                                         properties: {
+                                             id: $identifier,
+                                             description: $description,
+                                             title: $title,
+                                             published_at: $published_at,
+                                             channel_id: $channel_id,
+                                             channel_title: $channel_title,
+                                             duration: $duration,
+                                             view_count: $view_count,
+                                             like_count: $like_count,
+                                             comment_count: $comment_count
+                                         },
+                                         relations: {}
+                                     }')
 
-              # Check if there's another page of results
+                  # Append the video data to the array
+                  data=$(echo "$data" | jq --argjson new_video "$video_data" '. + [$new_video]')
+              done
+
+              # Check if there is another page of results
               nextPageToken=$(echo "$response" | jq -r '.nextPageToken')
               [ "$nextPageToken" == "null" ] && break
           done
 
-          # Debugging: Output the collected data
-          echo "Collected data:"
-          echo "$data" | jq .
-
-          # Export the data for use in the next step
+          # Set the video data as output
           echo "data=$data" >> $GITHUB_OUTPUT
 
-      - name: UPSERT playlist
+      - name: UPSERT Playlist
         uses: port-labs/port-github-action@v1
         with:
           identifier: "${{ fromJson(inputs.port_context).blueprint }}"
