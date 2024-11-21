@@ -104,11 +104,12 @@ jobs:
       - name: UPSERT playlist
         uses: port-labs/port-github-action@v1
         with:
-          blueprint: ${{ fromJson(inputs.port_context).blueprint }}
           clientId: ${{ secrets.PORT_CLIENT_ID }}
           clientSecret: ${{ secrets.PORT_CLIENT_SECRET }}
           baseUrl: https://api.getport.io
           operation: BULK_UPSERT
           identifier: playlist-videos
+          blueprint: ${{ fromJson(inputs.port_context).blueprint }}
           runId: ${{ fromJson(inputs.port_context).run_id }}
           entities: ${{ steps.fetch_videos.outputs.video_array }}
+          
