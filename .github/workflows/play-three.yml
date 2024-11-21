@@ -87,6 +87,7 @@ jobs:
           done
 
           # Set the video data as output
+          echo "$data"
           echo "data=$data" >> $GITHUB_OUTPUT
 
       - name: UPSERT Playlist
