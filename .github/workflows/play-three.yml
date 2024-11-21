@@ -84,10 +84,14 @@ jobs:
                   # Append the video JSON object to the array
                   video_array=$(echo "$video_array" | jq ". + [$video_data]")
 
-                  echo "video_array=$video_array" >> $GITHUB_OUTPUT
 
     
               done
+
+              echo "$video_array"
+
+              echo "video_array=$video_array" >> $GITHUB_OUTPUT
+
 
               # Check if more pages exist
               nextPageToken=$(echo "$response" | jq -r '.nextPageToken')
