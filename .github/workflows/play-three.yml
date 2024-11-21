@@ -108,7 +108,7 @@ jobs:
                   # Add data to output
                   
 
-                  video=$(echo "$video" | sed ':a;N;$!ba;s/\n/\\n/g' | sed 's/"/\\"/g')
+                  #video=$(echo "$video" | sed ':a;N;$!ba;s/\n/\\n/g' | sed 's/"/\\"/g')
                    echo "$video"
                   # echo "$title"
                   echo "video=$video" >> $GITHUB_OUTPUT
