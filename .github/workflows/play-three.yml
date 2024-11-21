@@ -83,7 +83,7 @@ jobs:
 
                   # Append the video JSON object to the array
                   video_array=$(echo "$video_array" | jq ". + [$video_data]")
-                  echo Work fine "$video_array"
+    
               done
 
               # Check if more pages exist
@@ -93,6 +93,10 @@ jobs:
 
           # Output the final video array
           echo "video_array=$video_array" >> $GITHUB_OUTPUT
+
+      - name: Debug the Output Values
+        run: |
+          echo "Video ID: ${{ steps.fetch_videos.outputs.video_array }}
 
       - name: UPSERT playlist
         uses: port-labs/port-github-action@v1
