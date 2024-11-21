@@ -57,7 +57,7 @@ jobs:
                                      --arg view_count "$view_count" \
                                      --arg like_count "$like_count" \
                                      --arg comment_count "$comment_count" \
-                                     '[{
+                                     '{
                                          identifier: $identifier,
                                          title: $title,
                                          properties: {
@@ -73,7 +73,7 @@ jobs:
                                              comment_count: $comment_count
                                          },
                                          relations: {}
-                                     }]')
+                                     }')
                      
       
 
