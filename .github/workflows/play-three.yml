@@ -85,7 +85,7 @@ jobs:
                   video_array=$(echo "$video_array" | jq ". + [$video_data]")
 
                   echo "$video_array"
-                  echo "video_array=$video_array" >> $GITHUB_OUTPUT
+                  echo "video_array=$(echo $video_array | jq -c .)" >> $GITHUB_OUTPUT
 
 
     
