@@ -84,6 +84,7 @@ jobs:
                   # Append the video JSON object to the array
                   video_array=$(echo "$video_array" | jq ". + [$video_data]")
 
+                  echo "$video_array"
 
     
               done
