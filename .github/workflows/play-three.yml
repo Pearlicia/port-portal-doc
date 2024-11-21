@@ -5,10 +5,10 @@ on:
     inputs:
       port_context:
         required: true
-        description: Includes the blueprint identifier, and the action's run id
+        description: Includes the blueprint identifier, and the action's run ID.
       playlist_id:
         required: true
-        description: The playlist ID
+        description: The playlist ID.
         type: string
 
 jobs:
@@ -83,9 +83,7 @@ jobs:
 
                   # Append the video JSON object to the array
                   video_array=$(echo "$video_array" | jq ". + [$video_data]")
-
-                  # Debug the current state of the array
-                  echo "Updated Video Array: $video_array"
+                  echo Work fine "$video_array"
               done
 
               # Check if more pages exist
@@ -93,7 +91,7 @@ jobs:
               [ "$nextPageToken" == "null" ] && break
           done
 
-          # Export the final video array as an output for the step
+          # Output the final video array
           echo "video_array=$video_array" >> $GITHUB_OUTPUT
 
       - name: UPSERT playlist
