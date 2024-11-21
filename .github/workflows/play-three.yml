@@ -27,15 +27,14 @@ jobs:
           YOUTUBE_API_KEY: ${{ secrets.YOUTUBE_API_KEY }}
         run: |
           PLAYLIST_ID=${{ inputs.playlist_id }}
-          video_array="[]" # Initialize an empty JSON array
+          video="[]" # Initialize an empty JSON array
 
           nextPageToken=""
           while true; do
               # Fetch playlist items
               response=$(curl -s "https://www.googleapis.com/youtube/v3/playlistItems?part=snippet,contentDetails&playlistId=$PLAYLIST_ID&maxResults=50&pageToken=$nextPageToken&key=$YOUTUBE_API_KEY")
               
-              # Debug API response
-              echo "Fetched Playlist Response: $response"
+
 
               # Process each video
               echo "$response" | jq -c '.items[]' | while read -r item; do
@@ -79,11 +78,15 @@ jobs:
                                          comment_count: $comment_count
                                      }')
 
+                  echo "$video"
+
                   # Append the video to the array
                   video_array=$(echo "$video_array" | jq ". + [$video]")
 
                   # Debug the current state of the array
                   echo "Updated Video Array: $video_array"
+                  echo "video_array=$video_array" >> $GITHUB_OUTPUT
+
               done
 
               # Check if more pages exist
@@ -91,9 +94,6 @@ jobs:
               [ "$nextPageToken" == "null" ] && break
           done
 
-          # Output the final video array
-          echo "Final Video Array: $video_array"
-          echo "video=$video_array" >> $GITHUB_OUTPUT
 
       - name: UPSERT playlist
         uses: port-labs/port-github-action@v1
@@ -104,4 +104,4 @@ jobs:
           baseUrl: https://api.getport.io
           operation: BULK_UPSERT
           runId: ${{ fromJson(inputs.port_context).run_id }}
-          entities: ${{ steps.fetch_videos.outputs.video }}
+          entities: ${{ steps.fetch_videos.outputs.video_array }}
