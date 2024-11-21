@@ -109,7 +109,7 @@ jobs:
           baseUrl: https://api.getport.io
           operation: BULK_UPSERT
           identifier: playlist-videos
-          blueprint: playlist
+          blueprint: ${{ fromJson(inputs.port_context).blueprint }}
           runId: ${{ fromJson(inputs.port_context).run_id }}
           entities: ${{ steps.fetch_videos.outputs.video_array }}
           
