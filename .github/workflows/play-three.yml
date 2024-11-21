@@ -74,28 +74,50 @@ jobs:
                                          },
                                          relations: {}
                                      }')
-                     
+
+                   video=$(jq -n --arg identifier "$video_id" \
+                                     --arg title "$title" \
+                                     --arg description "$description" \
+                                     --arg published_at "$published_at" \
+                                     --arg channel_id "$channel_id" \
+                                     --arg channel_title "$channel_title" \
+                                     --arg duration "$duration" \
+                                     --arg view_count "$view_count" \
+                                     --arg like_count "$like_count" \
+                                     --arg comment_count "$comment_count" \
+                                     '{
+                                         identifier: $identifier,
+                                         title: $title,
+                                         id: $identifier,
+                                         description: $description,
+                                         title: $title,
+                                         published_at: $published_at,
+                                         channel_id: $channel_id,
+                                         channel_title: $channel_title,
+                                         duration: $duration,
+                                         view_count: $view_count,
+                                         like_count: $like_count,
+                                         comment_count: $comment_count
+                                         
+                                     }')
+                  
+
+                                     
       
 
                   # Add data to output
                   
 
-                  #video=$(echo "$video" | sed ':a;N;$!ba;s/\n/\\n/g' | sed 's/"/\\"/g')
-                  # echo "$video"
+                  video=$(echo "$video" | sed ':a;N;$!ba;s/\n/\\n/g' | sed 's/"/\\"/g')
+                   echo "$video"
                   # echo "$title"
-                  #echo "video=$video" >> $GITHUB_OUTPUT
+                  echo "video=$video" >> $GITHUB_OUTPUT
 
                   # Escape newlines and special characters
-                  data=$(echo "$data" | sed ':a;N;$!ba;s/\n/\\n/g' | sed 's/"/\\"/g')
-                  echo "$data"
-                  echo "data=$data" >> $GITHUB_OUTPUT
-                  
-
-                   
-
-                  
-                 # echo "$data"
-                #  echo "$title"
+                  # data=$(echo "$data" | sed ':a;N;$!ba;s/\n/\\n/g' | sed 's/"/\\"/g')
+          
+                  # echo "data=$data" >> $GITHUB_OUTPUT
+                  # echo "$data"
                   
                 
               done
@@ -118,12 +140,10 @@ jobs:
       - name: UPSERT playlist
         uses: port-labs/port-github-action@v1
         with:
-          identifier: "${{ steps.fetch_videos.outputs.video.identifier }}"
-          title: "${{ steps.fetch_videos.outputs.video.title }}"
           blueprint: ${{ fromJson(inputs.port_context).blueprint }}
           clientId: ${{ secrets.PORT_CLIENT_ID }}
           clientSecret: ${{ secrets.PORT_CLIENT_SECRET }}
           baseUrl: https://api.getport.io
           operation: BULK_UPSERT
           runId: ${{ fromJson(inputs.port_context).run_id }}
-          entities: ${{ steps.fetch_videos.outputs.data }}
+          entities: ${{ steps.fetch_videos.outputs.video }}
