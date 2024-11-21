@@ -109,5 +109,6 @@ jobs:
           clientSecret: ${{ secrets.PORT_CLIENT_SECRET }}
           baseUrl: https://api.getport.io
           operation: BULK_UPSERT
+          identifier: playlist-videos
           runId: ${{ fromJson(inputs.port_context).run_id }}
           entities: ${{ steps.fetch_videos.outputs.video_array }}
