@@ -27,7 +27,7 @@ jobs:
           YOUTUBE_API_KEY: ${{ secrets.YOUTUBE_API_KEY }}
         run: |
           PLAYLIST_ID=${{ inputs.playlist_id }}
-          data="[]"
+
 
           nextPageToken=""
           while true; do
@@ -41,15 +41,13 @@ jobs:
                   channel_id=$(echo "$item" | jq -r '.snippet.channelId')
                   channel_title=$(echo "$item" | jq -r '.snippet.channelTitle')
 
-                  # Fetching additional video details (duration, view count, like count, comment count)
                   video_details=$(curl -s "https://www.googleapis.com/youtube/v3/videos?part=statistics,contentDetails&id=$video_id&key=$YOUTUBE_API_KEY")
                   duration=$(echo "$video_details" | jq -r '.items[0].contentDetails.duration')
                   view_count=$(echo "$video_details" | jq -r '.items[0].statistics.viewCount | tonumber')
                   like_count=$(echo "$video_details" | jq -r '.items[0].statistics.likeCount | tonumber')
                   comment_count=$(echo "$video_details" | jq -r '.items[0].statistics.commentCount | tonumber')
 
-                  # Creating the JSON object for each video
-                  video_data=$(jq -n --arg identifier "$video_id" \
+                  data=$(jq -n --arg identifier "$video_id" \
                                      --arg title "$title" \
                                      --arg description "$description" \
                                      --arg published_at "$published_at" \
@@ -59,7 +57,7 @@ jobs:
                                      --arg view_count "$view_count" \
                                      --arg like_count "$like_count" \
                                      --arg comment_count "$comment_count" \
-                                     '{
+                                     '[{
                                          identifier: $identifier,
                                          title: $title,
                                          properties: {
@@ -75,26 +73,53 @@ jobs:
                                              comment_count: $comment_count
                                          },
                                          relations: {}
-                                     }')
+                                     }]')
+                     
+      
 
-                  # Append the video data to the array
-                  data=$(echo "$data" | jq ". + [$video_data]")
+                  # Add data to output
+                  
+
+                  #video=$(echo "$video" | sed ':a;N;$!ba;s/\n/\\n/g' | sed 's/"/\\"/g')
+                  # echo "$video"
+                  # echo "$title"
+                  #echo "video=$video" >> $GITHUB_OUTPUT
+
+                  # Escape newlines and special characters
+                  data=$(echo "$data" | sed ':a;N;$!ba;s/\n/\\n/g' | sed 's/"/\\"/g')
+                  echo "$data"
+                  echo "data=$data" >> $GITHUB_OUTPUT
+                  
+
+                   
+
+                  
+                 # echo "$data"
+                #  echo "$title"
+                  
+                
               done
 
-              # Check if there is another page of results
               nextPageToken=$(echo "$response" | jq -r '.nextPageToken')
               [ "$nextPageToken" == "null" ] && break
           done
+          
+         
 
-          # Set the video data as output
-          echo "$data"
-          echo "data=$data" >> $GITHUB_OUTPUT
-
-      - name: UPSERT Playlist
+      # - name: Debug the Output Values
+      #   run: |
+      #     name=$(echo '${{ steps.fetch_videos.outputs.video }}' | jq -r '.title')
+          #echo "The name is $name"
+          #echo "Video ID: ${{ steps.fetch_videos.outputs.video }} | jq -r '.identifier' }}"
+          #echo "Title: ${{ steps.fetch_videos.outputs.video }} | jq -r '.title' }}"
+          #echo "Description: ${{ steps.fetch_videos.outputs.video }} | jq -r '.description' }}"
+          #echo "Published at: ${{ steps.fetch_videos.outputs.video }} | jq -r '.published_at' }}"
+          
+      - name: UPSERT playlist
         uses: port-labs/port-github-action@v1
         with:
-          identifier: "${{ fromJson(inputs.port_context).blueprint }}"
-          title: "YouTube Playlist Videos"
+          identifier: "${{ steps.fetch_videos.outputs.video.identifier }}"
+          title: "${{ steps.fetch_videos.outputs.video.title }}"
           blueprint: ${{ fromJson(inputs.port_context).blueprint }}
           clientId: ${{ secrets.PORT_CLIENT_ID }}
           clientSecret: ${{ secrets.PORT_CLIENT_SECRET }}
