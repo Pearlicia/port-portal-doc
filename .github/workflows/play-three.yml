@@ -34,8 +34,6 @@ jobs:
               # Fetch playlist items
               response=$(curl -s "https://www.googleapis.com/youtube/v3/playlistItems?part=snippet,contentDetails&playlistId=$PLAYLIST_ID&maxResults=50&pageToken=$nextPageToken&key=$YOUTUBE_API_KEY")
               
-
-
               # Process each video
               echo "$response" | jq -c '.items[]' | while read -r item; do
                   # Extract video metadata
@@ -54,17 +52,18 @@ jobs:
                   comment_count=$(echo "$video_details" | jq -r '.items[0].statistics.commentCount | tonumber')
 
                   # Create video JSON object
-                   video_data_object=$(jq -n '[]' | jq -s add --argjson identifier "$video_id" \
-                    --argjson title "$title" \
-                    --argjson description "$description" \
-                    --argjson published_at "$published_at" \
-                    --argjson channel_id "$channel_id" \
-                    --argjson channel_title "$channel_title" \
-                    --argjson duration "$duration" \
+                  video_data=$(jq -n \
+                    --arg identifier "$video_id" \
+                    --arg title "$title" \
+                    --arg description "$description" \
+                    --arg published_at "$published_at" \
+                    --arg channel_id "$channel_id" \
+                    --arg channel_title "$channel_title" \
+                    --arg duration "$duration" \
                     --argjson view_count "$view_count" \
                     --argjson like_count "$like_count" \
                     --argjson comment_count "$comment_count" \
-                    '[{
+                    '{
                         identifier: $identifier,
                         title: $title,
                         properties: {
@@ -80,20 +79,13 @@ jobs:
                             comment_count: $comment_count
                         },
                         relations: {}
-                    }]')
+                    }')
 
-                  
-
-
-                  # Append the video to the array
-                  video_data_object=$(jq -s add $video_data_object $video)
-                  echo gemini "$video_data_object"
-                  video_array=$(echo "$video_array" | jq ". + [$video]")
+                  # Append the video JSON object to the array
+                  video_array=$(echo "$video_array" | jq ". + [$video_data]")
 
                   # Debug the current state of the array
                   echo "Updated Video Array: $video_array"
-                  echo "video_array=$video_array" >> $GITHUB_OUTPUT
-
               done
 
               # Check if more pages exist
@@ -101,6 +93,8 @@ jobs:
               [ "$nextPageToken" == "null" ] && break
           done
 
+          # Export the final video array as an output for the step
+          echo "video_array=$video_array" >> $GITHUB_OUTPUT
 
       - name: UPSERT playlist
         uses: port-labs/port-github-action@v1
