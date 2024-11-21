@@ -73,7 +73,7 @@ jobs:
                                              comment_count: $comment_count
                                          },
                                          relations: {}
-                                     }')
+                                     }' | jq -s '.' )
 
                    video=$(jq -n --arg identifier "$video_id" \
                                      --arg title "$title" \
