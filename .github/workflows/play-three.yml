@@ -85,7 +85,7 @@ jobs:
                                      --arg view_count "$view_count" \
                                      --arg like_count "$like_count" \
                                      --arg comment_count "$comment_count" \
-                                     '{
+                                     '[{
                                          identifier: $identifier,
                                          title: $title,
                                          id: $identifier,
@@ -99,7 +99,7 @@ jobs:
                                          like_count: $like_count,
                                          comment_count: $comment_count
                                          
-                                     }')
+                                     }]')
                   
 
                                      
