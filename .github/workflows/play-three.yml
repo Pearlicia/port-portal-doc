@@ -78,7 +78,7 @@ jobs:
                                      }')
 
                   # Append the video data to the array
-                  data=$(echo "$data" | jq --argjson new_video "$video_data" '. + [$new_video]')
+                  data=$(echo "$data" | jq ". + [$video_data]")
               done
 
               # Check if there is another page of results
