@@ -8,7 +8,7 @@ on:
         description: Includes the blueprint identifier, and the action's run id
       playlist_id:
         required: true
-        description: The playlist id
+        description: The playlist ID
         type: string
 
 jobs:
@@ -27,13 +27,19 @@ jobs:
           YOUTUBE_API_KEY: ${{ secrets.YOUTUBE_API_KEY }}
         run: |
           PLAYLIST_ID=${{ inputs.playlist_id }}
-
+          video_array="[]" # Initialize an empty JSON array
 
           nextPageToken=""
           while true; do
+              # Fetch playlist items
               response=$(curl -s "https://www.googleapis.com/youtube/v3/playlistItems?part=snippet,contentDetails&playlistId=$PLAYLIST_ID&maxResults=50&pageToken=$nextPageToken&key=$YOUTUBE_API_KEY")
               
+              # Debug API response
+              echo "Fetched Playlist Response: $response"
+
+              # Process each video
               echo "$response" | jq -c '.items[]' | while read -r item; do
+                  # Extract video metadata
                   video_id=$(echo "$item" | jq -r '.contentDetails.videoId')
                   title=$(echo "$item" | jq -r '.snippet.title')
                   description=$(echo "$item" | jq -r '.snippet.description')
@@ -41,56 +47,29 @@ jobs:
                   channel_id=$(echo "$item" | jq -r '.snippet.channelId')
                   channel_title=$(echo "$item" | jq -r '.snippet.channelTitle')
 
+                  # Fetch additional details for video
                   video_details=$(curl -s "https://www.googleapis.com/youtube/v3/videos?part=statistics,contentDetails&id=$video_id&key=$YOUTUBE_API_KEY")
                   duration=$(echo "$video_details" | jq -r '.items[0].contentDetails.duration')
                   view_count=$(echo "$video_details" | jq -r '.items[0].statistics.viewCount | tonumber')
                   like_count=$(echo "$video_details" | jq -r '.items[0].statistics.likeCount | tonumber')
                   comment_count=$(echo "$video_details" | jq -r '.items[0].statistics.commentCount | tonumber')
 
-                  data=$(jq -n --arg identifier "$video_id" \
+                  # Create video JSON object
+                  video=$(jq -n --arg identifier "$video_id" \
                                      --arg title "$title" \
                                      --arg description "$description" \
                                      --arg published_at "$published_at" \
                                      --arg channel_id "$channel_id" \
                                      --arg channel_title "$channel_title" \
                                      --arg duration "$duration" \
-                                     --arg view_count "$view_count" \
-                                     --arg like_count "$like_count" \
-                                     --arg comment_count "$comment_count" \
+                                     --argjson view_count "$view_count" \
+                                     --argjson like_count "$like_count" \
+                                     --argjson comment_count "$comment_count" \
                                      '{
-                                         identifier: $identifier,
-                                         title: $title,
-                                         properties: {
-                                             id: $identifier,
-                                             description: $description,
-                                             title: $title,
-                                             published_at: $published_at,
-                                             channel_id: $channel_id,
-                                             channel_title: $channel_title,
-                                             duration: $duration,
-                                             view_count: $view_count,
-                                             like_count: $like_count,
-                                             comment_count: $comment_count
-                                         },
-                                         relations: {}
-                                     }' | jq -s '.' )
-
-                   video=$(jq -n --arg identifier "$video_id" \
-                                     --arg title "$title" \
-                                     --arg description "$description" \
-                                     --arg published_at "$published_at" \
-                                     --arg channel_id "$channel_id" \
-                                     --arg channel_title "$channel_title" \
-                                     --arg duration "$duration" \
-                                     --arg view_count "$view_count" \
-                                     --arg like_count "$like_count" \
-                                     --arg comment_count "$comment_count" \
-                                     '[{
                                          identifier: $identifier,
                                          title: $title,
                                          id: $identifier,
                                          description: $description,
-                                         title: $title,
                                          published_at: $published_at,
                                          channel_id: $channel_id,
                                          channel_title: $channel_title,
@@ -98,45 +77,24 @@ jobs:
                                          view_count: $view_count,
                                          like_count: $like_count,
                                          comment_count: $comment_count
-                                         
-                                     }]')
-                  
+                                     }')
 
-                                     
-      
+                  # Append the video to the array
+                  video_array=$(echo "$video_array" | jq ". + [$video]")
 
-                  # Add data to output
-                  
-
-                  #video=$(echo "$video" | sed ':a;N;$!ba;s/\n/\\n/g' | sed 's/"/\\"/g')
-                   echo "$video"
-                  # echo "$title"
-                  echo "video=$video" >> $GITHUB_OUTPUT
-
-                  # Escape newlines and special characters
-                  # data=$(echo "$data" | sed ':a;N;$!ba;s/\n/\\n/g' | sed 's/"/\\"/g')
-          
-                  # echo "data=$data" >> $GITHUB_OUTPUT
-                  # echo "$data"
-                  
-                
+                  # Debug the current state of the array
+                  echo "Updated Video Array: $video_array"
               done
 
+              # Check if more pages exist
               nextPageToken=$(echo "$response" | jq -r '.nextPageToken')
               [ "$nextPageToken" == "null" ] && break
           done
-          
-         
 
-      # - name: Debug the Output Values
-      #   run: |
-      #     name=$(echo '${{ steps.fetch_videos.outputs.video }}' | jq -r '.title')
-          #echo "The name is $name"
-          #echo "Video ID: ${{ steps.fetch_videos.outputs.video }} | jq -r '.identifier' }}"
-          #echo "Title: ${{ steps.fetch_videos.outputs.video }} | jq -r '.title' }}"
-          #echo "Description: ${{ steps.fetch_videos.outputs.video }} | jq -r '.description' }}"
-          #echo "Published at: ${{ steps.fetch_videos.outputs.video }} | jq -r '.published_at' }}"
-          
+          # Output the final video array
+          echo "Final Video Array: $video_array"
+          echo "video=$video_array" >> $GITHUB_OUTPUT
+
       - name: UPSERT playlist
         uses: port-labs/port-github-action@v1
         with:
