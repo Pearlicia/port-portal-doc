@@ -56,8 +56,6 @@ jobs:
           description=$(echo $PLAYLIST_DATA | jq -r '.items[0].snippet.description')
           thumbnail=$(echo $PLAYLIST_DATA | jq -r '.items[0].snippet.thumbnails.default.url')
           count=$(echo $PLAYLIST_DATA | jq -r '.items[0].contentDetails.itemCount')
-          channel_id=$(echo $PLAYLIST_DATA | jq -r '.items[0].snippet.channelId')
-          channel_title=$(echo $PLAYLIST_DATA | jq -r 'items[0].snippet.channelTitle')
 
           PLAYLIST_PAYLOAD=$(jq -n \
             --arg id "$PLAYLIST_ID" \
@@ -65,16 +63,12 @@ jobs:
             --arg desc "$description" \
             --arg thumb "$thumbnail" \
             --arg count "$count" \
-            --arg channel_id "$channel_id" \
-            --arg channel_title "$channel_title" \
             '{
               identifier: $id,
               properties: {
                 description: $desc,
                 thumbnail_url: $thumb,
-                video_count: ($count|tonumber),
-                channel_id: $channel_id,
-                channel_title: $channel_title
+                video_count: ($count|tonumber)
               }
             }')
 
