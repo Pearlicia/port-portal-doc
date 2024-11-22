@@ -222,7 +222,7 @@ jobs:
                       comment_count: ($comments|tonumber)
                     },
                     relations: {
-                      belongs_to: $playlist_id
+                      
                     }
                   }')
 
