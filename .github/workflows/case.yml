@@ -198,7 +198,7 @@ jobs:
                 local view_count=$(echo "$VIDEO_DATA" | jq -r '.items[0].statistics.viewCount // "0"')
                 local like_count=$(echo "$VIDEO_DATA" | jq -r '.items[0].statistics.likeCount // "0"')
                 local comment_count=$(echo "$VIDEO_DATA" | jq -r '.items[0].statistics.commentCount // "0"')
-                local published_at=$(echo $VIDEO_DATA | jq -r '.items[0].contentDetails.videoPublishedAt')
+                
 
                 add_action_log "Found video: $title" "Found"
 
@@ -211,7 +211,6 @@ jobs:
                   --arg views "$view_count" \
                   --arg likes "$like_count" \
                   --arg comments "$comment_count" \
-                  --arg pub_at "$published_at" \
                   --arg playlist_id "$PLAYLIST_ID" \
                   '{
                     identifier: $id,
@@ -219,7 +218,6 @@ jobs:
                       description: $desc,
                       thumbnail_url: $thumb,
                       duration: $duration,
-                      published_at: $pub_at,
                       view_count: ($views|tonumber),
                       like_count: ($likes|tonumber),
                       comment_count: ($comments|tonumber)
