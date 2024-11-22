@@ -1,4 +1,4 @@
-name: Ingest YouTube Playlist
+name: YouTube Playlist to Port Ingestion
 
 on:
   workflow_dispatch:
@@ -7,7 +7,7 @@ on:
         description: "Youtube video playlist id"
         required: true
       port_context:
-        description: "The port context"
+        description: "Includes the blueprint identifier, and the action's run id"
         type: string
         required: true
 
@@ -52,23 +52,29 @@ jobs:
             exit 1
           fi
 
-          TITLE=$(echo $PLAYLIST_DATA | jq -r '.items[0].snippet.title')
-          DESC=$(echo $PLAYLIST_DATA | jq -r '.items[0].snippet.description')
-          THUMB=$(echo $PLAYLIST_DATA | jq -r '.items[0].snippet.thumbnails.default.url')
-          COUNT=$(echo $PLAYLIST_DATA | jq -r '.items[0].contentDetails.itemCount')
+          title=$(echo $PLAYLIST_DATA | jq -r '.items[0].snippet.title')
+          description=$(echo $PLAYLIST_DATA | jq -r '.items[0].snippet.description')
+          thumbnail=$(echo $PLAYLIST_DATA | jq -r '.items[0].snippet.thumbnails.default.url')
+          count=$(echo $PLAYLIST_DATA | jq -r '.items[0].contentDetails.itemCount')
+          channel_id=$(echo $PLAYLIST_DATA | jq -r '.items[0].snippet.channelId')
+          channel_title=$(echo $PLAYLIST_DATA | jq -r 'items[0].snippet.channelTitle')
 
           PLAYLIST_PAYLOAD=$(jq -n \
             --arg id "$PLAYLIST_ID" \
-            --arg title "$TITLE" \
-            --arg desc "$DESC" \
-            --arg thumb "$THUMB" \
-            --arg count "$COUNT" \
+            --arg title "$title" \
+            --arg desc "$description" \
+            --arg thumb "$thumbnail" \
+            --arg count "$count" \
+            --arg channel_id "$channel_id" \
+            --arg channel_title "$channel_title" \
             '{
               identifier: $id,
               properties: {
                 description: $desc,
                 thumbnail_url: $thumb,
-                video_count: ($count|tonumber)
+                video_count: ($count|tonumber),
+                channel_id: $channel_id,
+                channel_title: $channel_title
               }
             }')
 
@@ -84,8 +90,8 @@ jobs:
           fi
           echo "::endgroup::"
 
-          echo "title=$(echo "$TITLE" | jq -R -s .)" >> $GITHUB_OUTPUT
-          echo "count=$COUNT" >> $GITHUB_OUTPUT
+          echo "title=$(echo "$title" | jq -R -s .)" >> $GITHUB_OUTPUT
+          echo "count=$count" >> $GITHUB_OUTPUT
 
   process-videos:
     needs: create-playlist
@@ -165,7 +171,7 @@ jobs:
           }
 
           # Function to create video entity
-          create_port_entity() {
+          create_video_entity() {
             local BLUEPRINT=$1
             local PAYLOAD=$2
             curl -s -X POST "https://api.getport.io/v1/blueprints/${BLUEPRINT}/entities" \
@@ -191,25 +197,27 @@ jobs:
               VIDEO_DATA=$(curl -s "https://youtube.googleapis.com/youtube/v3/videos?part=snippet,contentDetails,statistics&id=${VIDEO_ID}&key=${YOUTUBE_API_KEY}")
               
               if [ "$(echo "$VIDEO_DATA" | jq '.items | length')" -gt 0 ]; then
-                local V_TITLE=$(echo "$VIDEO_DATA" | jq -r '.items[0].snippet.title')
-                local V_DESC=$(echo "$VIDEO_DATA" | jq -r '.items[0].snippet.description')
-                local V_THUMB=$(echo "$VIDEO_DATA" | jq -r '.items[0].snippet.thumbnails.default.url')
-                local V_DURATION=$(echo "$VIDEO_DATA" | jq -r '.items[0].contentDetails.duration')
-                local V_VIEWS=$(echo "$VIDEO_DATA" | jq -r '.items[0].statistics.viewCount // "0"')
-                local V_LIKES=$(echo "$VIDEO_DATA" | jq -r '.items[0].statistics.likeCount // "0"')
-                local V_COMMENTS=$(echo "$VIDEO_DATA" | jq -r '.items[0].statistics.commentCount // "0"')
+                local title=$(echo "$VIDEO_DATA" | jq -r '.items[0].snippet.title')
+                local description=$(echo "$VIDEO_DATA" | jq -r '.items[0].snippet.description')
+                local thumbnail=$(echo "$VIDEO_DATA" | jq -r '.items[0].snippet.thumbnails.default.url')
+                local duration=$(echo "$VIDEO_DATA" | jq -r '.items[0].contentDetails.duration')
+                local view_count=$(echo "$VIDEO_DATA" | jq -r '.items[0].statistics.viewCount // "0"')
+                local like_count=$(echo "$VIDEO_DATA" | jq -r '.items[0].statistics.likeCount // "0"')
+                local comment_count=$(echo "$VIDEO_DATA" | jq -r '.items[0].statistics.commentCount // "0"')
+                local published_at=$(echo $VIDEO_DATA | jq -r '.items[0].contentDetails.videoPublishedAt')
 
-                add_action_log "Found video: $V_TITLE" "Found"
+                add_action_log "Found video: $title" "Found"
 
                 VIDEO_PAYLOAD=$(jq -n \
                   --arg id "$VIDEO_ID" \
-                  --arg title "$V_TITLE" \
-                  --arg desc "$V_DESC" \
-                  --arg thumb "$V_THUMB" \
-                  --arg duration "$V_DURATION" \
-                  --arg views "$V_VIEWS" \
-                  --arg likes "$V_LIKES" \
-                  --arg comments "$V_COMMENTS" \
+                  --arg title "$title" \
+                  --arg desc "$description" \
+                  --arg thumb "$thumbnail" \
+                  --arg duration "$duration" \
+                  --arg views "$view_count" \
+                  --arg likes "$like_count" \
+                  --arg comments "$comment_count" \
+                  --arg pub_at "$published_at" \
                   --arg playlist_id "$PLAYLIST_ID" \
                   '{
                     identifier: $id,
@@ -217,6 +225,7 @@ jobs:
                       description: $desc,
                       thumbnail_url: $thumb,
                       duration: $duration,
+                      published_at: $pub_at,
                       view_count: ($views|tonumber),
                       like_count: ($likes|tonumber),
                       comment_count: ($comments|tonumber)
@@ -226,11 +235,11 @@ jobs:
                     }
                   }')
 
-                RESPONSE=$(create_port_entity "video" "$VIDEO_PAYLOAD")
+                RESPONSE=$(create_video_entity "video" "$VIDEO_PAYLOAD")
                 if [ "$(echo "$RESPONSE" | jq -r '.ok // false')" = "true" ]; then
                   CURRENT=$(cat /tmp/videos_processed)
                   echo $((CURRENT + 1)) > /tmp/videos_processed
-                  add_action_log "Successfully processed video: $V_TITLE" "Success"
+                  add_action_log "Successfully processed video: $title" "Success"
                 else
                   CURRENT=$(cat /tmp/videos_failed)
                   echo $((CURRENT + 1)) > /tmp/videos_failed
