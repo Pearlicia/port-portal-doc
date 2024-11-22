@@ -65,6 +65,7 @@ jobs:
             --arg count "$count" \
             '{
               identifier: $id,
+              title: $title,
               properties: {
                 description: $desc,
                 thumbnail_url: $thumb,
@@ -214,6 +215,7 @@ jobs:
                   --arg playlist_id "$PLAYLIST_ID" \
                   '{
                     identifier: $id,
+                    title: $title
                     properties: {
                       description: $desc,
                       thumbnail_url: $thumb,
