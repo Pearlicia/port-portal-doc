@@ -215,7 +215,7 @@ jobs:
                   --arg playlist_id "$PLAYLIST_ID" \
                   '{
                     identifier: $id,
-                    title: $title
+                    title: $title,
                     properties: {
                       description: $desc,
                       thumbnail_url: $thumb,
