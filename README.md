@@ -538,11 +538,11 @@ It should look similar to the image below
 **If Self service action is `Successful`**
 Navigate to Catalog and click on Playlist to view your playlist data, it should look similar to the image below
 
-<img src="./assets/playlist-items.png" alt="Playlist-entity" style="border: 2px solid black; border-radius: 5px;">
+<img src="./assets/brand-new-playlist-cat.png" alt="Playlist-entity" style="border: 2px solid black; border-radius: 5px;">
 
 Also, navigate to Catalog and click on Video to view your videos, it should look similar to the image below
 
-<img src="./assets/video-item.png" alt="Video-entity" style="border: 2px solid black; border-radius: 5px;">
+<img src="./assets/brand-new-video.png" alt="Video-entity" style="border: 2px solid black; border-radius: 5px;">
 
 
 ## Visualization
