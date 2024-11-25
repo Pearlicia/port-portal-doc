@@ -96,6 +96,11 @@ Add the snippet below to create the video blueprint:
           "icon": "DefaultProperty",
           "type": "number",
           "title": "Comment count"
+        },
+        "thumbnail_url": {
+          "type": "string",
+          "title": "Thumbnail URL",
+          "format": "url"
         }
       },
       "required": []
